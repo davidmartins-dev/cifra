@@ -1,159 +1,336 @@
-# Turborepo starter
+# Cifra
 
-This Turborepo starter is maintained by the Turborepo core team.
+Cifra é uma aplicação full stack de gestão financeira pessoal.
 
-## Using this example
+O projeto permite registrar receitas e despesas, organizar lançamentos por categorias e acompanhar informações financeiras por meio de um dashboard.
 
-Run the following command:
+Foi desenvolvido como projeto de portfólio com foco em arquitetura de software, segurança, qualidade de código, testes, observabilidade e práticas de engenharia aplicadas a sistemas financeiros.
 
-```sh
-npx create-turbo@latest
+## Funcionalidades
+
+- Autenticação e autorização de usuários
+- Gestão de contas financeiras
+- Cadastro e gerenciamento de categorias
+- Registro de receitas e despesas
+- Consulta e filtragem de transações
+- Dashboard financeiro
+- Resumos por período e categoria
+- Controle de acesso baseado em papéis
+- Isolamento de dados entre usuários
+- Auditoria de operações relevantes
+- Área administrativa
+- Health checks e observabilidade da API
+
+## Arquitetura
+
+O backend utiliza uma arquitetura de Modular Monolith, combinada com princípios de Clean Architecture e SOLID.
+
+A aplicação é organizada por módulos de domínio, mantendo responsabilidades bem definidas e baixo acoplamento entre componentes.
+
+Principais módulos:
+
+- Auth
+- Users
+- Accounts
+- Categories
+- Transactions
+- Financial Summary
+- Administration
+- Audit
+
+A autorização considera tanto o papel do usuário quanto a propriedade do recurso. Um usuário somente pode acessar contas e transações pertencentes a ele.
+
+A área administrativa possui recursos específicos para gestão operacional, auditoria e observabilidade da plataforma.
+
+Documentação arquitetural, decisões técnicas e diagramas estão disponíveis em `docs/`.
+
+## Stack
+
+### Backend
+
+- NestJS
+- TypeScript
+- Prisma
+- PostgreSQL
+- REST API
+- Swagger / OpenAPI
+
+### Frontend
+
+- React
+- Next.js
+- TypeScript
+
+### Monorepo
+
+- PNPM
+- Turborepo
+
+### Infraestrutura
+
+- Docker
+- Neon PostgreSQL
+- Google Cloud Compute Engine (`e2-micro`)
+- Vercel
+- GitHub Actions
+
+## Estrutura
+
+```text
+cifra/
+├── .github/
+│   └── workflows/
+├── apps/
+│   ├── api/
+│   └── web/
+├── packages/
+│   ├── ui/
+│   ├── shared/
+│   ├── eslint-config/
+│   └── typescript-config/
+├── docs/
+│   ├── architecture/
+│   ├── adr/
+│   ├── security/
+│   └── runbooks/
+├── docker-compose.yml
+├── package.json
+├── pnpm-lock.yaml
+├── pnpm-workspace.yaml
+└── turbo.json
 ```
 
-## What's inside?
+## Backend
 
-This Turborepo includes the following packages/apps:
+A API é construída com NestJS e organizada como um Modular Monolith.
 
-### Apps and Packages
+Suas principais responsabilidades incluem:
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `@next/eslint-plugin-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+- autenticação
+- autorização
+- regras de negócio
+- validação de entrada
+- persistência
+- auditoria
+- observabilidade
+- integração com o banco de dados
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+O Prisma é utilizado como ORM e o PostgreSQL como banco de dados principal.
 
-### Utilities
+A API possui um Dockerfile próprio em `apps/api/Dockerfile`, utilizado para gerar a imagem de produção.
 
-This Turborepo has some additional tools already setup for you:
+## Frontend
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+A aplicação web utiliza Next.js e React.
 
-### Build
+O frontend é responsável pela interface de autenticação, gestão financeira, lançamento de transações, consultas e visualização dos indicadores financeiros.
 
-To build all apps and packages, run the following command:
+A comunicação com o backend ocorre por meio da API REST.
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+Em produção, o frontend é hospedado na Vercel.
 
-```sh
-cd my-turborepo
-turbo build
+## Segurança
+
+O projeto aplica práticas de segurança compatíveis com uma aplicação que manipula informações financeiras pessoais.
+
+Entre os mecanismos utilizados estão:
+
+- JWT
+- Hash seguro de senhas
+- RBAC
+- Validação de entrada
+- Controle de propriedade dos recursos
+- Isolamento de dados entre usuários
+- Auditoria de operações relevantes
+- Logs sem informações sensíveis
+- Configuração segura de variáveis de ambiente
+
+A autorização não depende apenas do papel do usuário. Recursos financeiros também são validados quanto à sua propriedade antes de serem acessados ou modificados.
+
+## API
+
+A API segue o padrão REST.
+
+A documentação dos endpoints é disponibilizada através do Swagger / OpenAPI.
+
+Em ambiente local:
+
+```text
+http://localhost:3000/api/docs
 ```
 
-Without global `turbo`, use your package manager:
+## Portas de desenvolvimento
 
-```sh
-cd my-turborepo
-npx turbo build
-pnpm exec turbo build
-pnpm exec turbo build
+O monorepo executa frontend e backend como aplicações independentes.
+
+| Serviço | Porta |
+|---|---:|
+| Next.js | 3001 |
+| NestJS API | 3000 |
+| PostgreSQL | 5432 |
+
+O frontend utiliza:
+
+```text
+http://localhost:3001
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+e a API:
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo build --filter=docs
+```text
+http://localhost:3000/api/v1
 ```
 
-Without global `turbo`:
+## Banco de dados
 
-```sh
-npx turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
+Durante o desenvolvimento local, o PostgreSQL é executado através do Docker Compose.
+
+```bash
+docker compose up -d
 ```
 
-### Develop
+O arquivo `docker-compose.yml` está localizado na raiz do monorepo e é responsável pela infraestrutura local.
 
-To develop all apps and packages, run the following command:
+Em produção, o PostgreSQL utilizado pela API é hospedado no Neon.
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+As migrações do Prisma devem ser executadas a partir do workspace da API.
 
-```sh
-cd my-turborepo
-turbo dev
+```bash
+pnpm --filter api prisma migrate dev
 ```
 
-Without global `turbo`, use your package manager:
+## Testes
 
-```sh
-cd my-turborepo
-npx turbo dev
-pnpm exec turbo dev
-pnpm exec turbo dev
+O projeto possui diferentes níveis de testes:
+
+- Unitários
+- Integração
+- E2E
+
+As principais ferramentas utilizadas são:
+
+- Vitest
+- Supertest
+- Playwright
+
+Os testes são executados pelo pipeline de CI.
+
+## Desenvolvimento local
+
+### Pré-requisitos
+
+- Node.js 24+
+- PNPM
+- Docker
+
+### Instalação
+
+Na raiz do monorepo:
+
+```bash
+pnpm install
 ```
 
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+Configure os arquivos `.env` utilizando os respectivos `.env.example` disponíveis na raiz e nos aplicativos.
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+### Banco de dados
 
-```sh
-turbo dev --filter=web
+Inicie o PostgreSQL:
+
+```bash
+docker compose up -d
 ```
 
-Without global `turbo`:
+Execute as migrações:
 
-```sh
-npx turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
+```bash
+pnpm --filter api prisma migrate dev
 ```
 
-### Remote Caching
+### Desenvolvimento
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+Para iniciar frontend e backend:
 
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
+```bash
+pnpm dev
 ```
 
-Without global `turbo`, use your package manager:
+O Turborepo executará as aplicações simultaneamente:
 
-```sh
-cd my-turborepo
-npx turbo login
-pnpm exec turbo login
-pnpm exec turbo login
+```text
+Next.js  → http://localhost:3001
+NestJS   → http://localhost:3000
 ```
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+## Docker
 
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
+O Docker Compose é utilizado para infraestrutura de desenvolvimento local.
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+O Dockerfile da API está localizado em:
 
-```sh
-turbo link
+```text
+apps/api/Dockerfile
 ```
 
-Without global `turbo`:
+A imagem da API pode ser construída a partir da raiz do monorepo:
 
-```sh
-npx turbo link
-pnpm exec turbo link
-pnpm exec turbo link
+```bash
+docker build -f apps/api/Dockerfile .
 ```
 
-## Useful Links
+O frontend não possui Dockerfile de produção, pois é hospedado diretamente na Vercel.
 
-Learn more about the power of Turborepo:
+## Deploy
 
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+A arquitetura de produção é composta por:
+
+```text
+Vercel
+└── Next.js
+
+Google Cloud Compute Engine
+└── Docker
+    └── NestJS API
+
+Neon
+└── PostgreSQL
+```
+
+O frontend é publicado na Vercel.
+
+A API é executada em uma instância Google Cloud Compute Engine `e2-micro` através de um container Docker.
+
+O PostgreSQL de produção é hospedado no Neon.
+
+O processo de build, testes e integração é automatizado através do GitHub Actions.
+
+## Documentação
+
+A documentação complementar fica organizada em:
+
+```text
+docs/
+├── adr/
+├── architecture/
+├── runbooks/
+└── security/
+```
+
+- `adr/` — decisões arquiteturais relevantes
+- `architecture/` — arquitetura e estrutura do sistema
+- `runbooks/` — procedimentos operacionais
+- `security/` — definições relacionadas à segurança
+
+## Status
+
+Projeto em desenvolvimento.
+
+O objetivo atual é construir uma aplicação funcional de gestão financeira pessoal, aplicando práticas de engenharia utilizadas em sistemas profissionais de produção.
+
+## Autor
+
+David Martins
+
+Senior Software Engineer
+
+Tecnologias principais: TypeScript, Node.js, NestJS, React, Next.js, PostgreSQL e arquitetura de sistemas.

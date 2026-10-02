@@ -36,3 +36,9 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+
+# Agentes de IA
+AGENTS.md 
+.agents/
+.claude/
+.cursor/
