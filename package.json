@@ -9,16 +9,17 @@
     "check-types": "turbo run check-types"
   },
   "devDependencies": {
+    "@next/eslint-plugin-next": "16.3.4",
     "@typescript-eslint/eslint-plugin": "^8.71.0",
     "@typescript-eslint/parser": "^8.71.0",
-    "eslint": "^10.11.0",
+    "eslint": "^9.39.5",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-next": "^0.0.0",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
     "prettier": "3.9.6",
     "turbo": "^2.11.5",
-    "typescript": "7.0.2"
+    "typescript": "6.0.3"
   },
   "packageManager": "pnpm@11.25.0",
   "engines": {
