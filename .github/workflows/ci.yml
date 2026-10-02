@@ -11,27 +11,6 @@ jobs:
     name: Lint, Build and Test
     runs-on: ubuntu-latest
 
-    env:
-      POSTGRES_USER: cifra_ci
-      POSTGRES_PASSWORD: cifra_ci
-      POSTGRES_DB: cifra_ci
-      DATABASE_URL: postgresql://cifra_ci:cifra_ci@localhost:5432/cifra_ci?schema=public
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: cifra_ci
-          POSTGRES_PASSWORD: cifra_ci
-          POSTGRES_DB: cifra_ci
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U cifra_ci -d cifra_ci"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -49,12 +28,6 @@ jobs:
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Generate Prisma Client
-        run: pnpm --filter api prisma generate
-
-      - name: Initialize Database
-        run: pnpm --filter api prisma db push
 
       - name: Lint
         run: pnpm lint
