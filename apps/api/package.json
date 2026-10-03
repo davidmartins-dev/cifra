@@ -19,7 +19,8 @@
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
-    "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
+    "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
@@ -28,11 +29,13 @@
     "@nestjs/passport": "^12.0.0",
     "@nestjs/platform-express": "^12.0.1",
     "@nestjs/swagger": "^12.0.2",
+    "@prisma/adapter-pg": "^7.10.0",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
+    "pg": "^8.23.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "swagger-ui-express": "^5.0.1"
