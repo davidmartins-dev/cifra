@@ -32,7 +32,7 @@ export class AuthController {
   ) {
     const result = await this.authService.login(loginDto);
     response.cookie(COOKIE_NAME, result.accessToken, getCookieOptions());
-    return result;
+    return { message: 'Login realizado com sucesso', user: result.user };
   }
 
   @Post('register')
@@ -46,7 +46,7 @@ export class AuthController {
   ) {
     const result = await this.authService.register(createUserDto);
     response.cookie(COOKIE_NAME, result.accessToken, getCookieOptions());
-    return result;
+    return { message: 'Cadastro realizado com sucesso', user: result.user };
   }
 
   @Post('logout')
