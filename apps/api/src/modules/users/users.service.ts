@@ -1,4 +1,5 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { PrismaService } from '../../shared/database/prisma.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
@@ -38,8 +39,19 @@ export class UsersService {
       });
 
       return user;
-    } catch (error: any) {
-      if (error?.code === 'P2002') {
+    } catch (error: unknown) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('E-mail já cadastrado');
+      }
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        (error as { code: unknown }).code === 'P2002'
+      ) {
         throw new ConflictException('E-mail já cadastrado');
       }
       throw error;
