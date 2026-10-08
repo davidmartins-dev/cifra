@@ -12,7 +12,7 @@ type JwtPayload = {
   role: string;
 };
 
-type PublicUser = {
+export type PublicUser = {
   id: string;
   name: string;
   email: string;
