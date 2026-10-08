@@ -8,8 +8,10 @@ export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateUserDto) {
+    const normalizedEmail = dto.email.trim().toLowerCase();
+
     const userExists = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+      where: { email: normalizedEmail },
     });
 
     if (userExists) {
@@ -18,23 +20,30 @@ export class UsersService {
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
-    const user = await this.prisma.user.create({
-      data: {
-        name: dto.name,
-        email: dto.email,
-        passwordHash,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    try {
+      const user = await this.prisma.user.create({
+        data: {
+          name: dto.name.trim(),
+          email: normalizedEmail,
+          passwordHash,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
 
-    return user;
+      return user;
+    } catch (error: any) {
+      if (error?.code === 'P2002') {
+        throw new ConflictException('E-mail já cadastrado');
+      }
+      throw error;
+    }
   }
 
   async findById(id: string) {
@@ -59,7 +68,7 @@ export class UsersService {
 
   async findByEmail(email: string) {
     return this.prisma.user.findUnique({
-      where: { email },
+      where: { email: email.trim().toLowerCase() },
     });
   }
 }

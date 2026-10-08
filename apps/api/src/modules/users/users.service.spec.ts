@@ -70,6 +70,62 @@ describe('UsersService', () => {
     ).rejects.toThrow(ConflictException);
   });
 
+  it('deve lançar ConflictException em caso de race condition com erro P2002 do Prisma', async () => {
+    const prisma = {
+      user: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockRejectedValue({ code: 'P2002' }),
+      },
+    } as unknown as PrismaService;
+
+    const service = new UsersService(prisma);
+
+    await expect(
+      service.create({
+        name: 'David Martins',
+        email: 'david@example.com',
+        password: 'password123',
+      }),
+    ).rejects.toThrow(ConflictException);
+  });
+
+  it('deve normalizar o e-mail para caixa baixa ao criar usuário', async () => {
+    const mockUser = {
+      id: 'user-id-1',
+      name: 'David Martins',
+      email: 'david@example.com',
+      role: 'USER',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const prisma = {
+      user: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue(mockUser),
+      },
+    } as unknown as PrismaService;
+
+    const service = new UsersService(prisma);
+    await service.create({
+      name: '  David Martins  ',
+      email: '  David@Example.COM  ',
+      password: 'password123',
+    });
+
+    expect(prisma.user.findUnique).toHaveBeenCalledWith({
+      where: { email: 'david@example.com' },
+    });
+    expect(prisma.user.create).toHaveBeenCalledWith({
+      data: {
+        name: 'David Martins',
+        email: 'david@example.com',
+        passwordHash: expect.any(String),
+      },
+      select: expect.any(Object),
+    });
+  });
+
   it('deve retornar o usuário por id', async () => {
     const mockUser = {
       id: 'user-id-1',
