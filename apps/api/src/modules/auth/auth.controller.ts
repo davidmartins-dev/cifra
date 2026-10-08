@@ -4,8 +4,7 @@ import type { CookieOptions, Response } from 'express';
 import { CreateUserDto } from '../users/dto/create-user.dto.js';
 import { AuthService } from './auth.service.js';
 import { LoginDto } from './dto/login.dto.js';
-
-const COOKIE_NAME = 'access_token';
+import { AUTH_COOKIE_NAME } from './jwt.strategy.js';
 
 const getCookieOptions = (): CookieOptions => ({
   httpOnly: true,
@@ -31,7 +30,7 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const result = await this.authService.login(loginDto);
-    response.cookie(COOKIE_NAME, result.accessToken, getCookieOptions());
+    response.cookie(AUTH_COOKIE_NAME, result.accessToken, getCookieOptions());
     return { message: 'Login realizado com sucesso', user: result.user };
   }
 
@@ -45,7 +44,7 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const result = await this.authService.register(createUserDto);
-    response.cookie(COOKIE_NAME, result.accessToken, getCookieOptions());
+    response.cookie(AUTH_COOKIE_NAME, result.accessToken, getCookieOptions());
     return { message: 'Cadastro realizado com sucesso', user: result.user };
   }
 
@@ -54,7 +53,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Encerra a sessão e remove o cookie HttpOnly' })
   @ApiResponse({ status: 200, description: 'Logout realizado com sucesso' })
   logout(@Res({ passthrough: true }) response: Response) {
-    response.clearCookie(COOKIE_NAME, {
+    response.clearCookie(AUTH_COOKIE_NAME, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

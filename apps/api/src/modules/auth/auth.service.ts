@@ -1,9 +1,30 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcrypt';
+import { User } from '@prisma/client';
 import { CreateUserDto } from '../users/dto/create-user.dto.js';
 import { UsersService } from '../users/users.service.js';
 import { LoginDto } from './dto/login.dto.js';
+
+type JwtPayload = {
+  sub: string;
+  email: string;
+  role: string;
+};
+
+type PublicUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type AuthResponse = {
+  accessToken: string;
+  user: PublicUser;
+};
 
 @Injectable()
 export class AuthService {
@@ -12,22 +33,16 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async register(dto: CreateUserDto) {
+  async register(dto: CreateUserDto): Promise<AuthResponse> {
     const user = await this.usersService.create(dto);
 
-    const payload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-    };
-
     return {
-      accessToken: this.jwtService.sign(payload),
-      user,
+      accessToken: this.jwtService.sign(this.buildPayload(user)),
+      user: this.buildPublicUser(user),
     };
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto): Promise<AuthResponse> {
     const user = await this.usersService.findByEmail(dto.email);
 
     if (!user) {
@@ -40,22 +55,28 @@ export class AuthService {
       throw new UnauthorizedException('Credenciais inválidas');
     }
 
-    const payload = {
+    return {
+      accessToken: this.jwtService.sign(this.buildPayload(user)),
+      user: this.buildPublicUser(user),
+    };
+  }
+
+  private buildPayload(user: Pick<User, 'id' | 'email' | 'role'>): JwtPayload {
+    return {
       sub: user.id,
       email: user.email,
       role: user.role,
     };
+  }
 
+  private buildPublicUser(user: Pick<User, 'id' | 'name' | 'email' | 'role' | 'createdAt' | 'updatedAt'>): PublicUser {
     return {
-      accessToken: this.jwtService.sign(payload),
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      },
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
     };
   }
 }

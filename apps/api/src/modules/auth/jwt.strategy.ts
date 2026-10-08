@@ -1,4 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import type { Request } from 'express';
 import { ExtractJwt, Strategy } from 'passport-jwt';
@@ -10,30 +11,33 @@ export interface JwtPayload {
   role: string;
 }
 
+export const AUTH_COOKIE_NAME = 'cifra_access_token';
+
 const cookieOrBearerExtractor = (req: Request): string | null => {
-  if (req?.cookies && req.cookies.access_token) {
-    return req.cookies.access_token as string;
+  if (req?.cookies?.[AUTH_COOKIE_NAME]) {
+    return req.cookies[AUTH_COOKIE_NAME] as string;
   }
   return ExtractJwt.fromAuthHeaderAsBearerToken()(req);
 };
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(private readonly usersService: UsersService) {
+  constructor(
+    private readonly usersService: UsersService,
+    configService: ConfigService,
+  ) {
     super({
       jwtFromRequest: cookieOrBearerExtractor,
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET || 'secretKey',
+      secretOrKey: configService.getOrThrow<string>('JWT_SECRET'),
     });
   }
 
   async validate(payload: JwtPayload) {
-    const user = await this.usersService.findById(payload.sub);
-
-    if (!user) {
+    try {
+      return await this.usersService.findById(payload.sub);
+    } catch {
       throw new UnauthorizedException('Usuário não encontrado ou não autorizado');
     }
-
-    return user;
   }
 }
