@@ -30,7 +30,7 @@ export function VerificationCodeEmail({
         <Body className="font-sans my-auto mx-auto px-0 py-4 text-gray-600">
           <Container className="bg-white px-4 py-8 border border-solid border-gray-200 rounded-xl max-w-[500px] mx-auto shadow-sm">
             {/* Header / Brand */} 
-            <Section className="border-b border-solid border-gray-200 pb-4">
+            <Section className="border-b border-solid border-gray-400 pb-4">
               <Text className="text-2xl font-extrabold text-black tracking-tight m-0"> 
                 Cifra<span className="text-emerald-500">.</span>
               </Text> 
@@ -66,7 +66,7 @@ export function VerificationCodeEmail({
             </Section>
 
             {/* Footer */}
-            <Section className="border-t border-solid border-gray-200 pt-4 text-center">
+            <Section className="border-t border-solid border-gray-400 pt-4 text-center">
               <Text className="text-xs text-gray-500 m-0 mb-1">
                 Cifra &bull; Gestão Financeira Pessoal
               </Text>
