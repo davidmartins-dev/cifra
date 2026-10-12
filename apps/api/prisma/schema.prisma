@@ -64,3 +64,24 @@ enum TransactionType {
   INCOME
   EXPENSE
 }
+
+enum EmailVerificationPurpose {
+  SIGNUP
+  PASSWORD_RESET
+}
+
+model EmailVerification {
+  id          String                   @id @default(uuid())
+  email       String
+  codeHash    String
+  purpose     EmailVerificationPurpose
+  attempts    Int                      @default(0)
+  maxAttempts Int                      @default(3)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime                 @default(now())
+
+  @@index([email, purpose])
+  @@index([expiresAt])
+  @@map("email_verifications")
+}
