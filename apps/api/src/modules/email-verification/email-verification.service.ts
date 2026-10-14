@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { EmailVerificationPurpose } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { randomInt } from 'node:crypto';
@@ -10,13 +11,21 @@ import { VerifyCodeDto } from './dto/verify-code.dto.js';
 
 @Injectable()
 export class EmailVerificationService {
-  private readonly defaultExpirationMinutes = 15;
+  private readonly defaultExpirationMinutes: number;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
     private readonly disposableEmailService: DisposableEmailService,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    const configuredMinutes = this.configService.get<number | string>(
+      'EMAIL_VERIFICATION_EXPIRES_IN_MINUTES',
+    );
+    this.defaultExpirationMinutes = configuredMinutes
+      ? Number(configuredMinutes)
+      : 5;
+  }
 
   async sendVerificationCode(
     dto: SendVerificationCodeDto,

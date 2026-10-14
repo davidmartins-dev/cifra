@@ -23,7 +23,7 @@ export class AuthController {
       httpOnly: true,
       secure: isProduction,
       sameSite: isProduction ? 'none' : 'lax',
-      maxAge: 15 * 60 * 1000, // 15 minutos (padrão de segurança para finanças)
+      maxAge: 15 * 60 * 1000, // 15 minutos (alinhado com JWT_EXPIRES_IN)
       path: '/',
     };
   }

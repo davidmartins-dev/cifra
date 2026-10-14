@@ -25,7 +25,7 @@ describe('EmailVerificationController', () => {
     it('deve delegar o envio do código para o serviço e retornar o resultado', async () => {
       const responsePayload = {
         message: 'Código de verificação enviado com sucesso',
-        expiresInMinutes: 15,
+        expiresInMinutes: 5,
       };
       serviceMock.sendVerificationCode.mockResolvedValue(responsePayload);
 

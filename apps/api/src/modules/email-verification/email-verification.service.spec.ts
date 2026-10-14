@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { EmailVerificationPurpose } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ConfigService } from '@nestjs/config';
 import type { PrismaService } from '../../shared/database/prisma.service.js';
 import type { DisposableEmailService } from '../../shared/email/disposable-email.service.js';
 import type { EmailService } from '../../shared/email/email.service.js';
@@ -23,6 +24,9 @@ describe('EmailVerificationService', () => {
   let disposableEmailServiceMock: {
     validate: ReturnType<typeof vi.fn>;
   };
+  let configServiceMock: {
+    get: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     prismaMock = {
@@ -42,10 +46,18 @@ describe('EmailVerificationService', () => {
       validate: vi.fn().mockResolvedValue(undefined),
     };
 
+    configServiceMock = {
+      get: vi.fn().mockImplementation((key: string) => {
+        if (key === 'EMAIL_VERIFICATION_EXPIRES_IN_MINUTES') return 5;
+        return undefined;
+      }),
+    };
+
     service = new EmailVerificationService(
       prismaMock as unknown as PrismaService,
       emailServiceMock as unknown as EmailService,
       disposableEmailServiceMock as unknown as DisposableEmailService,
+      configServiceMock as unknown as ConfigService,
     );
   });
 
@@ -68,11 +80,11 @@ describe('EmailVerificationService', () => {
         expect.objectContaining({
           to: 'david@example.com',
           code: expect.stringMatching(/^\d{6}$/),
-          expiresInMinutes: 15,
+          expiresInMinutes: 5,
         }),
       );
       expect(result.message).toBe('Código de verificação enviado com sucesso');
-      expect(result.expiresInMinutes).toBe(15);
+      expect(result.expiresInMinutes).toBe(5);
     });
 
     it('deve lançar BadRequestException e não criar código se o e-mail for descartável', async () => {
@@ -89,6 +101,23 @@ describe('EmailVerificationService', () => {
 
       expect(prismaMock.emailVerification.create).not.toHaveBeenCalled();
       expect(emailServiceMock.sendVerificationCode).not.toHaveBeenCalled();
+    });
+
+    it('deve usar 5 minutos como fallback se a variável EMAIL_VERIFICATION_EXPIRES_IN_MINUTES não estiver configurada', async () => {
+      configServiceMock.get.mockReturnValue(undefined);
+      const customService = new EmailVerificationService(
+        prismaMock as unknown as PrismaService,
+        emailServiceMock as unknown as EmailService,
+        disposableEmailServiceMock as unknown as DisposableEmailService,
+        configServiceMock as unknown as ConfigService,
+      );
+
+      const result = await customService.sendVerificationCode({
+        email: 'david@example.com',
+        purpose: EmailVerificationPurpose.SIGNUP,
+      });
+
+      expect(result.expiresInMinutes).toBe(5);
     });
   });
 
