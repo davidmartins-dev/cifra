@@ -51,6 +51,20 @@ describe('Auth (e2e)', () => {
         return record;
       },
     },
+    emailVerification: {
+      findUnique: async ({ where }: { where: { id: string } }) => {
+        if (where.id === 'e2e-valid-ticket') {
+          return {
+            id: 'e2e-valid-ticket',
+            email: 'david.e2e@example.com',
+            purpose: 'SIGNUP',
+            consumedAt: new Date(),
+          };
+        }
+        return null;
+      },
+      delete: async () => ({ id: 'e2e-valid-ticket' }),
+    },
   };
 
   beforeAll(async () => {
@@ -84,6 +98,7 @@ describe('Auth (e2e)', () => {
     name: 'David Martins',
     email: 'david.e2e@example.com',
     password: 'Password123!',
+    verificationTicket: 'e2e-valid-ticket',
   };
 
   let authCookie = '';

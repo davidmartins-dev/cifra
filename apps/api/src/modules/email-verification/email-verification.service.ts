@@ -62,7 +62,11 @@ export class EmailVerificationService {
 
   async verifyCode(
     dto: VerifyCodeDto,
-  ): Promise<{ verified: boolean; message: string }> {
+  ): Promise<{
+    verified: boolean;
+    message: string;
+    verificationTicket: string;
+  }> {
     const verification = await this.prisma.emailVerification.findFirst({
       where: {
         email: dto.email,
@@ -125,6 +129,42 @@ export class EmailVerificationService {
     return {
       verified: true,
       message: 'Código verificado com sucesso',
+      verificationTicket: verification.id,
     };
   }
+
+  async validateVerificationTicket(
+    ticket: string,
+    email: string,
+    purpose: EmailVerificationPurpose,
+  ): Promise<void> {
+    if (!ticket) {
+      throw new BadRequestException('Ticket de verificação é obrigatório');
+    }
+
+    const verification = await this.prisma.emailVerification.findUnique({
+      where: { id: ticket },
+    });
+
+    if (
+      !verification ||
+      verification.email.toLowerCase() !== email.trim().toLowerCase() ||
+      verification.purpose !== purpose ||
+      !verification.consumedAt
+    ) {
+      throw new BadRequestException(
+        'Ticket de verificação inválido ou inexistente para este e-mail',
+      );
+    }
+
+    const ticketMaxAgeMs = 30 * 60 * 1000;
+    if (Date.now() - verification.consumedAt.getTime() > ticketMaxAgeMs) {
+      throw new BadRequestException('Ticket de verificação expirado');
+    }
+
+    await this.prisma.emailVerification.delete({
+      where: { id: ticket },
+    });
+  }
 }
+

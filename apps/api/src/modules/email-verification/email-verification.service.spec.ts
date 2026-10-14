@@ -90,6 +90,7 @@ describe('EmailVerificationService', () => {
       expect(result).toEqual({
         verified: true,
         message: 'Código verificado com sucesso',
+        verificationTicket: 'verification-1',
       });
       expect(prismaMock.emailVerification.update).toHaveBeenCalledWith({
         where: { id: 'verification-1' },

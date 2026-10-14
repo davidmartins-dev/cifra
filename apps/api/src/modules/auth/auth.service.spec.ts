@@ -1,22 +1,34 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { EmailVerificationPurpose } from '@prisma/client';
 import bcrypt from 'bcrypt';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { EmailVerificationService } from '../email-verification/email-verification.service.js';
 import { UsersService } from '../users/users.service.js';
 import { AuthService } from './auth.service.js';
 
 describe('AuthService', () => {
-  it('deve realizar login com sucesso com credenciais válidas', async () => {
-    const mockUser = {
-      id: 'user-1',
-      name: 'David Martins',
-      email: 'david@example.com',
-      passwordHash: 'hashed_password',
-      role: 'USER' as const,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+  const mockUser = {
+    id: 'user-1',
+    name: 'David Martins',
+    email: 'david@example.com',
+    passwordHash: 'hashed_password',
+    role: 'USER' as const,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
 
+  let emailVerificationServiceMock: {
+    validateVerificationTicket: ReturnType<typeof vi.fn>;
+  };
+
+  beforeEach(() => {
+    emailVerificationServiceMock = {
+      validateVerificationTicket: vi.fn().mockResolvedValue(undefined),
+    };
+  });
+
+  it('deve realizar login com sucesso com credenciais válidas', async () => {
     const usersService = {
       findByEmail: vi.fn().mockResolvedValue(mockUser),
     } as unknown as UsersService;
@@ -27,7 +39,11 @@ describe('AuthService', () => {
 
     vi.spyOn(bcrypt, 'compare').mockImplementation(async () => true);
 
-    const service = new AuthService(usersService, jwtService);
+    const service = new AuthService(
+      usersService,
+      jwtService,
+      emailVerificationServiceMock as unknown as EmailVerificationService,
+    );
     const result = await service.login({
       email: 'david@example.com',
       password: 'password123',
@@ -47,7 +63,11 @@ describe('AuthService', () => {
       sign: vi.fn(),
     } as unknown as JwtService;
 
-    const service = new AuthService(usersService, jwtService);
+    const service = new AuthService(
+      usersService,
+      jwtService,
+      emailVerificationServiceMock as unknown as EmailVerificationService,
+    );
 
     await expect(
       service.login({
@@ -58,16 +78,6 @@ describe('AuthService', () => {
   });
 
   it('deve lançar UnauthorizedException se a senha for incorreta no login', async () => {
-    const mockUser = {
-      id: 'user-1',
-      name: 'David Martins',
-      email: 'david@example.com',
-      passwordHash: 'hashed_password',
-      role: 'USER' as const,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
     const usersService = {
       findByEmail: vi.fn().mockResolvedValue(mockUser),
     } as unknown as UsersService;
@@ -78,7 +88,11 @@ describe('AuthService', () => {
 
     vi.spyOn(bcrypt, 'compare').mockImplementation(async () => false);
 
-    const service = new AuthService(usersService, jwtService);
+    const service = new AuthService(
+      usersService,
+      jwtService,
+      emailVerificationServiceMock as unknown as EmailVerificationService,
+    );
 
     await expect(
       service.login({
@@ -88,7 +102,7 @@ describe('AuthService', () => {
     ).rejects.toThrow(UnauthorizedException);
   });
 
-  it('deve registrar usuário e retornar token de acesso', async () => {
+  it('deve registrar usuário e retornar token de acesso após validar ticket', async () => {
     const createdUser = {
       id: 'user-2',
       name: 'Novo Usuário',
@@ -106,19 +120,32 @@ describe('AuthService', () => {
       sign: vi.fn().mockReturnValue('mock-jwt-token'),
     } as unknown as JwtService;
 
-    const service = new AuthService(usersService, jwtService);
+    const service = new AuthService(
+      usersService,
+      jwtService,
+      emailVerificationServiceMock as unknown as EmailVerificationService,
+    );
     const result = await service.register({
       name: 'Novo Usuário',
       email: 'novo@example.com',
       password: 'password123',
+      verificationTicket: 'valid-ticket-123',
     });
 
+    expect(
+      emailVerificationServiceMock.validateVerificationTicket,
+    ).toHaveBeenCalledWith(
+      'valid-ticket-123',
+      'novo@example.com',
+      EmailVerificationPurpose.SIGNUP,
+    );
     expect(result.accessToken).toBe('mock-jwt-token');
     expect(result.user).toEqual(createdUser);
     expect(usersService.create).toHaveBeenCalledWith({
       name: 'Novo Usuário',
       email: 'novo@example.com',
       password: 'password123',
+      verificationTicket: 'valid-ticket-123',
     });
   });
 });

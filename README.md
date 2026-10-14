@@ -9,6 +9,7 @@ Foi desenvolvido como projeto de portfólio com foco em arquitetura de software,
 ## Funcionalidades
 
 - Autenticação e autorização de usuários
+- Verificação de e-mail por código de uso único (fluxo de cadastro)
 - Gestão de contas financeiras
 - Cadastro e gerenciamento de categorias
 - Registro de receitas e despesas
@@ -30,6 +31,7 @@ A aplicação é organizada por módulos de domínio, mantendo responsabilidades
 Principais módulos:
 
 - Auth
+- Email Verification
 - Users
 - Accounts
 - Categories
@@ -232,6 +234,27 @@ pnpm install
 ```
 
 Configure os arquivos `.env` utilizando os respectivos `.env.example` disponíveis na raiz e nos aplicativos.
+
+### Configuração de e-mail (Gmail SMTP)
+
+Para o envio real dos códigos de verificação de e-mail utilizando o Gmail:
+
+1. Certifique-se de ter a **Verificação em duas etapas** ativada na sua conta Google.
+2. Acesse a página de [Senhas de app do Google](https://myaccount.google.com/apppasswords).
+3. No campo **Nome do app**, informe um identificador (ex.: `Cifra Local`) e clique em **Criar**.
+4. O Google gerará uma senha de 16 caracteres com espaços (ex.: `abcd efgh ijkl mnop`). Copie e **remova todos os espaços** (ex.: `abcdefghijklmnop`).
+5. Configure as variáveis no seu `apps/api/.env`:
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=seu_email@gmail.com
+SMTP_PASS=abcdefghijklmnop
+EMAIL_FROM="Cifra <seu_email@gmail.com>"
+```
+
+> **Dica:** Em ambiente local, se as variáveis `SMTP_*` não forem preenchidas, a aplicação não falhará — o código de 6 dígitos será exibido diretamente nos logs do terminal da API para você copiar e testar com facilidade.
 
 ### Banco de dados
 

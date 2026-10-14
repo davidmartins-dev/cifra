@@ -46,6 +46,7 @@ describe('EmailVerificationController', () => {
       const responsePayload = {
         verified: true,
         message: 'Código verificado com sucesso',
+        verificationTicket: 'verification-1',
       };
       serviceMock.verifyCode.mockResolvedValue(responsePayload);
 

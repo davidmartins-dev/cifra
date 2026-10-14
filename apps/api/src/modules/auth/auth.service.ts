@@ -1,9 +1,10 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { EmailVerificationPurpose, User } from '@prisma/client';
 import bcrypt from 'bcrypt';
-import { User } from '@prisma/client';
-import { CreateUserDto } from '../users/dto/create-user.dto.js';
+import { EmailVerificationService } from '../email-verification/email-verification.service.js';
 import { UsersService } from '../users/users.service.js';
+import { CreateUserDto } from './dto/create-user.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 
 type JwtPayload = {
@@ -31,9 +32,16 @@ export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
+    private readonly emailVerificationService: EmailVerificationService,
   ) {}
 
   async register(dto: CreateUserDto): Promise<AuthResponse> {
+    await this.emailVerificationService.validateVerificationTicket(
+      dto.verificationTicket,
+      dto.email,
+      EmailVerificationPurpose.SIGNUP,
+    );
+
     const user = await this.usersService.create(dto);
 
     return {

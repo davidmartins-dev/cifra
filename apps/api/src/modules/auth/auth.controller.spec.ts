@@ -91,7 +91,12 @@ describe('AuthController', () => {
     const res = createMockResponse();
 
     const response = await controller.register(
-      { name: 'David Martins', email: 'david@example.com', password: 'password123' },
+      {
+        name: 'David Martins',
+        email: 'david@example.com',
+        password: 'password123',
+        verificationTicket: 'valid-ticket-123',
+      },
       res,
     );
 
@@ -99,6 +104,7 @@ describe('AuthController', () => {
       name: 'David Martins',
       email: 'david@example.com',
       password: 'password123',
+      verificationTicket: 'valid-ticket-123',
     });
     expect(res.cookie).toHaveBeenCalledWith(
       AUTH_COOKIE_NAME,
