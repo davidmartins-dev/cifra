@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Post, Res, UseGuards } fro
 import { ConfigService } from '@nestjs/config';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { CookieOptions, Response } from 'express';
-import { CreateUserDto } from '../users/dto/create-user.dto.js';
+import { CreateUserDto } from './dto/create-user.dto.js';
 import { AuthService, type PublicUser } from './auth.service.js';
 import { CurrentUser } from './decorators/current-user.decorator.js';
 import { LoginDto } from './dto/login.dto.js';
@@ -23,7 +23,7 @@ export class AuthController {
       httpOnly: true,
       secure: isProduction,
       sameSite: isProduction ? 'none' : 'lax',
-      maxAge: 15 * 60 * 1000, // 15 minutos (padrão de segurança para finanças)
+      maxAge: 15 * 60 * 1000, // 15 minutos (alinhado com JWT_EXPIRES_IN)
       path: '/',
     };
   }
