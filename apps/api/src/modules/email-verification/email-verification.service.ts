@@ -3,6 +3,7 @@ import { EmailVerificationPurpose } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { randomInt } from 'node:crypto';
 import { PrismaService } from '../../shared/database/prisma.service.js';
+import { DisposableEmailService } from '../../shared/email/disposable-email.service.js';
 import { EmailService } from '../../shared/email/email.service.js';
 import { SendVerificationCodeDto } from './dto/send-verification-code.dto.js';
 import { VerifyCodeDto } from './dto/verify-code.dto.js';
@@ -14,11 +15,14 @@ export class EmailVerificationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
+    private readonly disposableEmailService: DisposableEmailService,
   ) {}
 
   async sendVerificationCode(
     dto: SendVerificationCodeDto,
   ): Promise<{ message: string; expiresInMinutes: number }> {
+    await this.disposableEmailService.validate(dto.email);
+
     const code = randomInt(100000, 1000000).toString();
     const codeHash = await bcrypt.hash(code, 10);
     const expiresAt = new Date(

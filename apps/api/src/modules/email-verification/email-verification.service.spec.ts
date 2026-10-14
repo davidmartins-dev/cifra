@@ -3,6 +3,7 @@ import { EmailVerificationPurpose } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PrismaService } from '../../shared/database/prisma.service.js';
+import type { DisposableEmailService } from '../../shared/email/disposable-email.service.js';
 import type { EmailService } from '../../shared/email/email.service.js';
 import { EmailVerificationService } from './email-verification.service.js';
 
@@ -19,6 +20,9 @@ describe('EmailVerificationService', () => {
   let emailServiceMock: {
     sendVerificationCode: ReturnType<typeof vi.fn>;
   };
+  let disposableEmailServiceMock: {
+    validate: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     prismaMock = {
@@ -34,9 +38,14 @@ describe('EmailVerificationService', () => {
       sendVerificationCode: vi.fn().mockResolvedValue(undefined),
     };
 
+    disposableEmailServiceMock = {
+      validate: vi.fn().mockResolvedValue(undefined),
+    };
+
     service = new EmailVerificationService(
       prismaMock as unknown as PrismaService,
       emailServiceMock as unknown as EmailService,
+      disposableEmailServiceMock as unknown as DisposableEmailService,
     );
   });
 
@@ -64,6 +73,22 @@ describe('EmailVerificationService', () => {
       );
       expect(result.message).toBe('Código de verificação enviado com sucesso');
       expect(result.expiresInMinutes).toBe(15);
+    });
+
+    it('deve lançar BadRequestException e não criar código se o e-mail for descartável', async () => {
+      disposableEmailServiceMock.validate.mockRejectedValueOnce(
+        new BadRequestException('E-mails temporários ou descartáveis não são permitidos'),
+      );
+
+      await expect(
+        service.sendVerificationCode({
+          email: 'user@tempmail.com',
+          purpose: EmailVerificationPurpose.SIGNUP,
+        }),
+      ).rejects.toThrow('E-mails temporários ou descartáveis não são permitidos');
+
+      expect(prismaMock.emailVerification.create).not.toHaveBeenCalled();
+      expect(emailServiceMock.sendVerificationCode).not.toHaveBeenCalled();
     });
   });
 
