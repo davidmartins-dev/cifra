@@ -14,10 +14,27 @@ model User {
   role         UserRole      @default(USER)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+  accounts     Account[]
   categories   Category[]
   transactions Transaction[]
 
   @@map("users")
+}
+
+model Account {
+  id           String        @id @default(uuid())
+  name         String
+  type         AccountType   @default(CHECKING)
+  balance      Decimal       @default(0) @db.Decimal(15, 2)
+  userId       String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("accounts")
 }
 
 model Category {
@@ -44,13 +61,16 @@ model Transaction {
   notes       String?
   userId      String
   categoryId  String
+  accountId   String?
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   category    Category        @relation(fields: [categoryId], references: [id])
+  account     Account?        @relation(fields: [accountId], references: [id], onDelete: SetNull)
   user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([categoryId])
+  @@index([accountId])
   @@index([userId, date])
   @@map("transactions")
 }
@@ -58,6 +78,14 @@ model Transaction {
 enum UserRole {
   ADMIN
   USER
+}
+
+enum AccountType {
+  CHECKING
+  SAVINGS
+  INVESTMENT
+  CASH
+  OTHER
 }
 
 enum TransactionType {
