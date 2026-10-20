@@ -7,6 +7,7 @@ import { AuthModule } from './modules/auth/auth.module.js';
 import { CategoriesModule } from './modules/categories/categories.module.js';
 import { EmailVerificationModule } from './modules/email-verification/email-verification.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { TransactionsModule } from './modules/transactions/transactions.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 import { PrismaModule } from './shared/database/prisma.module.js';
 
@@ -28,6 +29,7 @@ import { PrismaModule } from './shared/database/prisma.module.js';
     EmailVerificationModule,
     AccountsModule,
     CategoriesModule,
+    TransactionsModule,
   ],
   providers: [
     {
