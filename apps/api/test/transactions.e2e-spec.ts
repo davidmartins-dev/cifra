@@ -1,6 +1,6 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Account, AccountType, Category, Transaction, TransactionType, User } from '@prisma/client';
+import { Account, AccountType, Category, Prisma, Transaction, TransactionType, User } from '@prisma/client';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
@@ -8,6 +8,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module.js';
 import { AUTH_COOKIE_NAME } from '../src/modules/auth/jwt.strategy.js';
 import { PrismaService } from '../src/shared/database/prisma.service.js';
+
+type TransactionWithRelations = Transaction & {
+  category?: Category | null;
+  account?: Account | null;
+};
 
 describe('Transactions (e2e)', () => {
   let app: INestApplication<App>;
@@ -79,7 +84,7 @@ describe('Transactions (e2e)', () => {
           id,
           name: data.name,
           type: data.type,
-          balance: data.balance as any,
+          balance: data.balance as unknown as Prisma.Decimal,
           userId: data.userId,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -143,12 +148,12 @@ describe('Transactions (e2e)', () => {
           categoryId: string;
           accountId: string | null;
         };
-      }): Promise<any> => {
+      }): Promise<TransactionWithRelations> => {
         const id = `tx-uuid-${transactionsDb.size + 1}`;
         const record: Transaction = {
           id,
           description: data.description,
-          amount: data.amount as any,
+          amount: data.amount as unknown as Prisma.Decimal,
           type: data.type,
           date: data.date,
           notes: data.notes,
@@ -180,7 +185,7 @@ describe('Transactions (e2e)', () => {
         orderBy?: { date: 'desc' };
         take?: number;
         skip?: number;
-      }): Promise<any[]> => {
+      }): Promise<TransactionWithRelations[]> => {
         let results = Array.from(transactionsDb.values()).filter((tx) => tx.userId === where.userId);
 
         if (where.type) {
@@ -215,7 +220,7 @@ describe('Transactions (e2e)', () => {
         where,
       }: {
         where: { id: string; userId: string };
-      }): Promise<any | null> => {
+      }): Promise<TransactionWithRelations | null> => {
         const tx = transactionsDb.get(where.id);
         if (tx && tx.userId === where.userId) {
           return {
@@ -232,7 +237,7 @@ describe('Transactions (e2e)', () => {
       }: {
         where: { id: string };
         data: Partial<Transaction>;
-      }): Promise<any> => {
+      }): Promise<TransactionWithRelations> => {
         const existing = transactionsDb.get(where.id)!;
         const updated: Transaction = {
           ...existing,

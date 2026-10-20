@@ -1,6 +1,6 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Account, AccountType, Category, Transaction, TransactionType, User } from '@prisma/client';
+import { Account, AccountType, Category, Prisma, Transaction, TransactionType, User } from '@prisma/client';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
@@ -8,6 +8,29 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module.js';
 import { AUTH_COOKIE_NAME } from '../src/modules/auth/jwt.strategy.js';
 import { PrismaService } from '../src/shared/database/prisma.service.js';
+
+interface MonthlyEvolutionMonth {
+  month: number;
+  monthName: string;
+  income: number;
+  expense: number;
+  net: number;
+}
+
+interface MonthlyEvolutionResponse {
+  year: number;
+  totalIncome: number;
+  totalExpense: number;
+  netTotal: number;
+  months: MonthlyEvolutionMonth[];
+}
+
+interface TransactionFilterWhere {
+  userId: string;
+  type?: TransactionType;
+  accountId?: string;
+  date?: { gte?: Date; lte?: Date };
+}
 
 describe('FinancialSummary (e2e)', () => {
   let app: INestApplication<App>;
@@ -79,7 +102,7 @@ describe('FinancialSummary (e2e)', () => {
           id,
           name: data.name,
           type: data.type,
-          balance: data.balance as any,
+          balance: new Prisma.Decimal(data.balance),
           userId: data.userId,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -168,7 +191,7 @@ describe('FinancialSummary (e2e)', () => {
         const record: Transaction = {
           id,
           description: data.description,
-          amount: data.amount as any,
+          amount: new Prisma.Decimal(data.amount),
           type: data.type,
           date: data.date,
           notes: data.notes,
@@ -181,37 +204,46 @@ describe('FinancialSummary (e2e)', () => {
         transactionsDb.set(id, record);
         return record;
       },
-      aggregate: async ({ where }: { where: any }): Promise<any> => {
+      aggregate: async ({
+        where,
+      }: {
+        where: TransactionFilterWhere;
+      }): Promise<{ _sum: { amount: Prisma.Decimal | null }; _count: { id: number } }> => {
         let filtered = Array.from(transactionsDb.values()).filter(
-          (tx) => tx.userId === where.userId && tx.type === where.type,
+          (tx) => tx.userId === where.userId && (!where.type || tx.type === where.type),
         );
         if (where.accountId) {
           filtered = filtered.filter((tx) => tx.accountId === where.accountId);
         }
         if (where.date?.gte) {
-          filtered = filtered.filter((tx) => tx.date >= where.date.gte);
+          filtered = filtered.filter((tx) => tx.date >= where.date!.gte!);
         }
         if (where.date?.lte) {
-          filtered = filtered.filter((tx) => tx.date <= where.date.lte);
+          filtered = filtered.filter((tx) => tx.date <= where.date!.lte!);
         }
         const sum = filtered.reduce((acc, curr) => acc + Number(curr.amount), 0);
         return {
-          _sum: { amount: filtered.length > 0 ? sum : null },
+          _sum: { amount: filtered.length > 0 ? new Prisma.Decimal(sum) : null },
           _count: { id: filtered.length },
         };
       },
-      groupBy: async ({ where }: { by: string[]; where: any }): Promise<any[]> => {
+      groupBy: async ({
+        where,
+      }: {
+        by: string[];
+        where: TransactionFilterWhere;
+      }): Promise<Array<{ categoryId: string; _sum: { amount: Prisma.Decimal }; _count: { id: number } }>> => {
         let filtered = Array.from(transactionsDb.values()).filter(
-          (tx) => tx.userId === where.userId && tx.type === where.type,
+          (tx) => tx.userId === where.userId && (!where.type || tx.type === where.type),
         );
         if (where.accountId) {
           filtered = filtered.filter((tx) => tx.accountId === where.accountId);
         }
         if (where.date?.gte) {
-          filtered = filtered.filter((tx) => tx.date >= where.date.gte);
+          filtered = filtered.filter((tx) => tx.date >= where.date!.gte!);
         }
         if (where.date?.lte) {
-          filtered = filtered.filter((tx) => tx.date <= where.date.lte);
+          filtered = filtered.filter((tx) => tx.date <= where.date!.lte!);
         }
         const groupMap = new Map<string, { sum: number; count: number }>();
         for (const tx of filtered) {
@@ -223,19 +255,23 @@ describe('FinancialSummary (e2e)', () => {
         }
         return Array.from(groupMap.entries()).map(([categoryId, data]) => ({
           categoryId,
-          _sum: { amount: data.sum },
+          _sum: { amount: new Prisma.Decimal(data.sum) },
           _count: { id: data.count },
         }));
       },
-      findMany: async ({ where }: { where: any }): Promise<any[]> => {
+      findMany: async ({
+        where,
+      }: {
+        where: { userId: string; date?: { gte?: Date; lte?: Date } };
+      }): Promise<Transaction[]> => {
         let filtered = Array.from(transactionsDb.values()).filter(
           (tx) => tx.userId === where.userId,
         );
         if (where.date?.gte) {
-          filtered = filtered.filter((tx) => tx.date >= where.date.gte);
+          filtered = filtered.filter((tx) => tx.date >= where.date!.gte!);
         }
         if (where.date?.lte) {
-          filtered = filtered.filter((tx) => tx.date <= where.date.lte);
+          filtered = filtered.filter((tx) => tx.date <= where.date!.lte!);
         }
         return filtered;
       },
@@ -446,8 +482,10 @@ describe('FinancialSummary (e2e)', () => {
     expect(res.body.netTotal).toBe(5000);
     expect(res.body.months.length).toBe(12);
 
+    const body = res.body as MonthlyEvolutionResponse;
+
     // Mês 10 (Outubro)
-    const outubro = res.body.months.find((m: any) => m.month === 10);
+    const outubro = body.months.find((m) => m.month === 10);
     expect(outubro).toEqual({
       month: 10,
       monthName: 'Outubro',
@@ -457,7 +495,7 @@ describe('FinancialSummary (e2e)', () => {
     });
 
     // Mês 1 (Janeiro - zerado)
-    const janeiro = res.body.months.find((m: any) => m.month === 1);
+    const janeiro = body.months.find((m) => m.month === 1);
     expect(janeiro).toEqual({
       month: 1,
       monthName: 'Janeiro',

@@ -1,6 +1,6 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { AccountType, type Account, type User } from '@prisma/client';
+import { AccountType, Prisma, type Account, type User } from '@prisma/client';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
@@ -115,15 +115,15 @@ describe('Accounts (e2e)', () => {
         data: { name: string; type: AccountType; balance: number; userId: string };
       }): Promise<Account> => {
         const id = `acc-uuid-${accountsDb.size + 1}`;
-        const record = {
+        const record: Account = {
           id,
           name: data.name,
           type: data.type,
-          balance: data.balance as unknown as any,
+          balance: data.balance as unknown as Prisma.Decimal,
           userId: data.userId,
           createdAt: new Date(),
           updatedAt: new Date(),
-        } as Account;
+        };
         accountsDb.set(id, record);
         return record;
       },
