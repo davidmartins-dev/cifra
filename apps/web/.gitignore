@@ -6,6 +6,10 @@
 
 # testing
 /coverage
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
 
 # next.js
 /.next/
@@ -35,6 +39,9 @@ yarn-error.log*
 next-env.d.ts
 
 # Agents de IA
+AGENTS.md
+CLAUDE.md
 .agents
 .claude
 .cursor
+.devin

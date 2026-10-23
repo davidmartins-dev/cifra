@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EmailVerificationPurpose } from '@prisma/client';
 import bcrypt from 'bcrypt';
@@ -31,6 +36,24 @@ export class EmailVerificationService {
     dto: SendVerificationCodeDto,
   ): Promise<{ message: string; expiresInMinutes: number }> {
     await this.disposableEmailService.validate(dto.email);
+
+    if (dto.purpose === EmailVerificationPurpose.PASSWORD_RESET) {
+      const user = await this.prisma.user.findUnique({
+        where: { email: dto.email },
+      });
+      if (!user) {
+        throw new NotFoundException('Nenhuma conta encontrada com este e-mail');
+      }
+    }
+
+    if (dto.purpose === EmailVerificationPurpose.SIGNUP) {
+      const user = await this.prisma.user.findUnique({
+        where: { email: dto.email },
+      });
+      if (user) {
+        throw new ConflictException('Este e-mail já está cadastrado na plataforma');
+      }
+    }
 
     const code = randomInt(100000, 1000000).toString();
     const codeHash = await bcrypt.hash(code, 10);

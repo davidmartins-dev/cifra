@@ -83,4 +83,16 @@ export class UsersService {
       where: { email: email.trim().toLowerCase() },
     });
   }
+
+  async updatePassword(id: string, password: string) {
+    const passwordHash = await bcrypt.hash(password, 10);
+    return this.prisma.user.update({
+      where: { id },
+      data: { passwordHash },
+      select: {
+        id: true,
+        email: true,
+      },
+    });
+  }
 }

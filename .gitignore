@@ -14,6 +14,10 @@ node_modules
 
 # Testing
 coverage
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
 
 # Turbo
 .turbo
@@ -39,7 +43,9 @@ yarn-error.log*
 *.pem
 
 # Agentes de IA
-AGENTS.md 
+AGENTS.md
+CLAUDE.md
 .agents/
 .claude/
 .cursor/
+.devin/
