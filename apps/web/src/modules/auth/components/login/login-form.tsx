@@ -3,9 +3,11 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Lock, Mail } from "lucide-react";
-import { Logo } from "@/components/logo";
-import { Button } from "@/components/ui/button";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { AlertCircle, Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { Logo } from "@repo/ui/logo";
+import { Button } from "@repo/ui/button";
 import {
   Card,
   CardContent,
@@ -13,56 +15,56 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Spinner } from "@/components/ui/spinner";
-import { toast } from "@/components/ui/toast";
-import { useAuth } from "@/hooks/use-auth";
+} from "@repo/ui/card";
+import { Input } from "@repo/ui/input";
+import { Label } from "@repo/ui/label";
+import { Spinner } from "@repo/ui/spinner";
+import { toast } from "@repo/ui/toast";
+import { useLoginMutation } from "../../hooks/use-auth-mutations";
+import { loginSchema, type LoginFormData } from "../../schemas/auth.schema";
 
 export function LoginForm() {
   const router = useRouter();
-  const { login, isLoading } = useAuth();
 
-  const [email, setEmail] = React.useState("");
-  const [password, setPassword] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setErrorMessage(null);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
 
-    const trimmedEmail = email.trim().toLowerCase();
-    if (!trimmedEmail) {
-      setErrorMessage("Por favor, informe seu e-mail.");
-      return;
-    }
-    if (!password) {
-      setErrorMessage("Por favor, informe sua senha.");
-      return;
-    }
-
-    try {
-      await login({ email: trimmedEmail, password });
+  const loginMutation = useLoginMutation({
+    onSuccess: () => {
       toast.add({
         title: "Bem-vindo de volta!",
         description: "Login realizado com sucesso.",
         type: "success",
       });
       router.push("/dashboard");
-    } catch (error) {
+    },
+    onError: (error: Error) => {
       const message =
-        error instanceof Error
-          ? error.message
-          : "Falha na autenticação. Verifique suas credenciais.";
+        error.message || "Falha na autenticação. Verifique suas credenciais.";
       setErrorMessage(message);
       toast.add({
         title: "Erro ao entrar",
         description: message,
         type: "error",
       });
-    }
+    },
+  });
+
+  const onSubmit = (data: LoginFormData) => {
+    setErrorMessage(null);
+    loginMutation.mutate(data);
   };
 
   return (
@@ -72,8 +74,8 @@ export function LoginForm() {
         <Logo size="lg" />
       </div>
 
-      <Card className="border-border/60 shadow-xl backdrop-blur-sm bg-card/95">
-        <CardHeader className="space-y-1.5 pb-6 text-center sm:text-left">
+      <Card>
+        <CardHeader>
           <CardTitle className="text-2xl font-bold tracking-tight">
             Acesse sua conta
           </CardTitle>
@@ -82,14 +84,15 @@ export function LoginForm() {
           </CardDescription>
         </CardHeader>
 
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
+          <CardContent className="space-y-4 pt-2">
             {errorMessage && (
               <div
                 role="alert"
-                className="p-3 text-sm rounded-md bg-destructive/10 border border-destructive/20 text-destructive font-medium animate-in fade-in-50"
+                className="flex items-center gap-2.5 p-3 text-sm rounded-md bg-destructive/10 border border-destructive/20 text-destructive font-medium animate-in fade-in-50"
               >
-                {errorMessage}
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>{errorMessage}</span>
               </div>
             )}
 
@@ -102,25 +105,21 @@ export function LoginForm() {
                   type="email"
                   autoComplete="email"
                   placeholder="seu.email@exemplo.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isLoading}
-                  required
+                  disabled={loginMutation.isPending}
                   className="pl-9"
+                  aria-invalid={!!errors.email}
+                  {...register("email")}
                 />
               </div>
+              {errors.email && (
+                <p className="text-xs text-destructive font-medium">
+                  {errors.email.message}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Senha</Label>
-                <Link
-                  href="/forgot-password"
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Esqueceu a senha?
-                </Link>
-              </div>
+              <Label htmlFor="password">Senha</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
@@ -128,17 +127,16 @@ export function LoginForm() {
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoading}
-                  required
+                  disabled={loginMutation.isPending}
                   className="pl-9 pr-10"
+                  aria-invalid={!!errors.password}
+                  {...register("password")}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   tabIndex={-1}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   aria-label={showPassword ? "Ocultar senha" : "Ver senha"}
                 >
                   {showPassword ? (
@@ -148,16 +146,22 @@ export function LoginForm() {
                   )}
                 </button>
               </div>
+              {errors.password && (
+                <p className="text-xs text-destructive font-medium">
+                  {errors.password.message}
+                </p>
+              )}
             </div>
           </CardContent>
 
-          <CardFooter className="flex flex-col gap-4 pt-2">
+          <CardFooter className="flex flex-col py-6 gap-4 mt-4">
             <Button
+              size="lg"
               type="submit"
               className="w-full font-semibold"
-              disabled={isLoading}
+              disabled={loginMutation.isPending}
             >
-              {isLoading ? (
+              {loginMutation.isPending ? (
                 <>
                   <Spinner className="mr-2 h-4 w-4" />
                   Entrando...
@@ -167,15 +171,24 @@ export function LoginForm() {
               )}
             </Button>
 
-            <p className="text-center text-sm text-muted-foreground">
-              Ainda não tem uma conta?{" "}
+            <div className="flex flex-col items-center gap-2 text-center text-sm">
+              <p className="text-muted-foreground">
+                Ainda não tem uma conta?{" "}
+                <Link
+                  href="/register"
+                  className="font-medium text-emerald-600 hover:text-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300 underline-offset-4 hover:underline transition-colors"
+                >
+                  Criar conta
+                </Link>
+              </p>
+
               <Link
-                href="/register"
+                href="/forgot-password"
                 className="font-medium text-emerald-600 hover:text-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300 underline-offset-4 hover:underline transition-colors"
               >
-                Criar conta
+                Esqueci minha senha
               </Link>
-            </p>
+            </div>
           </CardFooter>
         </form>
       </Card>
