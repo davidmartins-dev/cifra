@@ -11,7 +11,7 @@ test.describe("E2E - Fluxo de Autenticação / Login", () => {
     await expect(page.getByLabel(/^e-mail$/i)).toBeVisible();
     await expect(page.getByLabel(/^senha$/i)).toBeVisible();
     await expect(page.getByRole("button", { name: /^entrar$/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /esqueceu a senha\?/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /esqueci minha senha/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /criar conta/i })).toBeVisible();
   });
 
@@ -88,7 +88,7 @@ test.describe("E2E - Fluxo de Autenticação / Login", () => {
   });
 
   test("deve navegar para a tela de recuperação de senha e de cadastro através dos links", async ({ page }) => {
-    await page.getByRole("link", { name: /esqueceu a senha\?/i }).click();
+    await page.getByRole("link", { name: /esqueci minha senha/i }).click();
     await expect(page).toHaveURL(/\/forgot-password/);
 
     await page.goto("/login");
