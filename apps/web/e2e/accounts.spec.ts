@@ -1,14 +1,159 @@
 import { test, expect } from "@playwright/test";
 
+interface MockAccount {
+  id: string;
+  userId: string;
+  name: string;
+  type: string;
+  balance: number;
+  color?: string;
+  includeInTotal: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 test.describe("E2E - Gestão de Contas Financeiras (/accounts)", () => {
-  test.beforeEach(async ({ page }) => {
-    // 1. Realiza login com o usuário padrão de desenvolvimento
+  let mockAccounts: MockAccount[] = [];
+
+  test.beforeEach(async ({ page, context }) => {
+    // 1. Estado inicial isolado por teste
+    mockAccounts = [
+      {
+        id: "acc-initial-1",
+        userId: "user-uuid-123",
+        name: "Conta Corrente Principal",
+        type: "CHECKING",
+        balance: 1000,
+        color: "#10b981",
+        includeInTotal: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+
+    // 2. Mock de autenticação (BFF login e cookie de sessão E2E)
+    await page.route("**/api/auth/login", async (route) => {
+      await context.addCookies([
+        {
+          name: "cifra_e2e_auth",
+          value: "true",
+          domain: "localhost",
+          path: "/",
+        },
+      ]);
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        headers: {
+          "Set-Cookie": "cifra_e2e_auth=true; Path=/; HttpOnly",
+        },
+        body: JSON.stringify({
+          user: {
+            id: "user-uuid-123",
+            email: "admin@cifra.app",
+            name: "Administrador Cifra",
+          },
+          tokens: {
+            accessToken: "mock-access-token",
+            refreshToken: "mock-refresh-token",
+          },
+        }),
+      });
+    });
+
+    // 3. Mock da API de contas financeiras (CRUD completo simulado no Playwright)
+    await page.route("**/api/accounts**", async (route) => {
+      const method = route.request().method();
+      const url = new URL(route.request().url());
+      const match = url.pathname.match(/\/api\/accounts\/([^/?#]+)/);
+      const accountId = match ? match[1] : null;
+
+      if (method === "GET") {
+        if (accountId) {
+          const account = mockAccounts.find((a) => a.id === accountId);
+          if (!account) {
+            return route.fulfill({
+              status: 404,
+              contentType: "application/json",
+              body: JSON.stringify({ message: "Conta não encontrada" }),
+            });
+          }
+          return route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify(account),
+          });
+        }
+
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(mockAccounts),
+        });
+      }
+
+      if (method === "POST") {
+        const body = route.request().postDataJSON();
+        const newAccount: MockAccount = {
+          id: `acc-${Date.now()}`,
+          userId: "user-uuid-123",
+          name: body.name,
+          type: body.type || "CHECKING",
+          balance: Number(body.balance) || 0,
+          color: body.color || "#10b981",
+          includeInTotal: body.includeInTotal ?? true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        mockAccounts = [newAccount, ...mockAccounts];
+        return route.fulfill({
+          status: 201,
+          contentType: "application/json",
+          body: JSON.stringify(newAccount),
+        });
+      }
+
+      if (method === "PATCH") {
+        const body = route.request().postDataJSON();
+        const index = mockAccounts.findIndex((a) => a.id === accountId);
+        if (index === -1) {
+          return route.fulfill({
+            status: 404,
+            contentType: "application/json",
+            body: JSON.stringify({ message: "Conta não encontrada" }),
+          });
+        }
+        mockAccounts[index] = {
+          ...mockAccounts[index],
+          ...body,
+          updatedAt: new Date().toISOString(),
+        };
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(mockAccounts[index]),
+        });
+      }
+
+      if (method === "DELETE") {
+        mockAccounts = mockAccounts.filter((a) => a.id !== accountId);
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ message: "Conta excluída com sucesso" }),
+        });
+      }
+
+      return route.fallback();
+    });
+
+    // 4. Realiza login e aguarda redirecionamento para o dashboard
     await page.goto("/login");
     await page.getByLabel(/^e-mail$/i).fill("admin@cifra.app");
     await page.getByLabel(/^senha$/i).fill("Admin@123456");
     await page.getByRole("button", { name: /^entrar$/i }).click();
 
-    // 2. Aguarda redirecionamento para o dashboard
     await expect(page).toHaveURL(/dashboard/, { timeout: 15000 });
   });
 
