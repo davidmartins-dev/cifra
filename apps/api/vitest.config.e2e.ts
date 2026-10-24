@@ -7,5 +7,11 @@ export default defineConfig({
     globals: true,
     root: './',
     include: ['**/*.e2e-spec.ts'],
+    env: {
+      NODE_ENV: 'test',
+      JWT_SECRET: 'super-secret-e2e-jwt-key-with-minimum-32-characters',
+      JWT_EXPIRES_IN: '15m',
+      DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/cifra_test?schema=public',
+    },
   },
 });
