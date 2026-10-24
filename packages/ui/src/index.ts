@@ -8,3 +8,6 @@ export * from "./spinner";
 export * from "./toast";
 export * from "./logo";
 export * from "./utils";
+export * from "./dialog";
+export * from "./select";
+export * from "./dropdown-menu";

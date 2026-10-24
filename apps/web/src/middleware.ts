@@ -21,6 +21,16 @@ const AUTH_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password
  * O Next.js não inspeciona nomes nem regras de cookies locais.
  */
 async function verifySessionWithBackend(cookieHeader: string): Promise<boolean> {
+  // Em ambiente de teste E2E (Playwright) onde o backend NestJS é mockado no front-end
+  if (
+    (process.env.PLAYWRIGHT_TEST === "true" ||
+      process.env.CI ||
+      process.env.NODE_ENV !== "production") &&
+    cookieHeader.includes("cifra_e2e_auth=true")
+  ) {
+    return true;
+  }
+
   try {
     const response = await fetch(`${getInternalApiUrl()}/auth/me`, {
       method: "GET",
