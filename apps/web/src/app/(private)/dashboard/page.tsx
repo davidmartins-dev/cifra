@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   LogOut,
@@ -140,10 +141,13 @@ export default function DashboardPage() {
               <PlusCircle className="h-4 w-4 text-emerald-600" />
               <span>Nova Transação</span>
             </Button>
-            <Button variant="outline" className="w-full justify-start gap-2 cursor-pointer">
+            <Link
+              href="/accounts"
+              className="inline-flex items-center w-full justify-start gap-2 rounded-lg border border-border bg-background hover:bg-muted hover:text-foreground text-sm font-medium h-10 px-3 cursor-pointer transition-colors"
+            >
               <Wallet className="h-4 w-4 text-sky-600" />
               <span>Gerenciar Contas</span>
-            </Button>
+            </Link>
             <Button variant="outline" className="w-full justify-start gap-2 cursor-pointer">
               <TrendingUp className="h-4 w-4 text-violet-600" />
               <span>Ver Relatórios</span>
