@@ -17,6 +17,9 @@ describe('EmailVerificationService', () => {
       findFirst: ReturnType<typeof vi.fn>;
       update: ReturnType<typeof vi.fn>;
     };
+    user: {
+      findUnique: ReturnType<typeof vi.fn>;
+    };
   };
   let emailServiceMock: {
     sendVerificationCode: ReturnType<typeof vi.fn>;
@@ -35,6 +38,9 @@ describe('EmailVerificationService', () => {
         create: vi.fn().mockResolvedValue({ id: 'verification-1' }),
         findFirst: vi.fn(),
         update: vi.fn().mockResolvedValue({}),
+      },
+      user: {
+        findUnique: vi.fn().mockResolvedValue(null),
       },
     };
 
@@ -118,6 +124,34 @@ describe('EmailVerificationService', () => {
       });
 
       expect(result.expiresInMinutes).toBe(5);
+    });
+
+    it('deve lançar NotFoundException se o e-mail não existir para PASSWORD_RESET', async () => {
+      prismaMock.user.findUnique.mockResolvedValueOnce(null);
+
+      await expect(
+        service.sendVerificationCode({
+          email: 'naoexiste@example.com',
+          purpose: EmailVerificationPurpose.PASSWORD_RESET,
+        }),
+      ).rejects.toThrow('Nenhuma conta encontrada com este e-mail');
+
+      expect(prismaMock.emailVerification.create).not.toHaveBeenCalled();
+      expect(emailServiceMock.sendVerificationCode).not.toHaveBeenCalled();
+    });
+
+    it('deve lançar ConflictException se o e-mail já estiver cadastrado para SIGNUP', async () => {
+      prismaMock.user.findUnique.mockResolvedValueOnce({ id: 'user-1', email: 'existe@example.com' });
+
+      await expect(
+        service.sendVerificationCode({
+          email: 'existe@example.com',
+          purpose: EmailVerificationPurpose.SIGNUP,
+        }),
+      ).rejects.toThrow('Este e-mail já está cadastrado na plataforma');
+
+      expect(prismaMock.emailVerification.create).not.toHaveBeenCalled();
+      expect(emailServiceMock.sendVerificationCode).not.toHaveBeenCalled();
     });
   });
 

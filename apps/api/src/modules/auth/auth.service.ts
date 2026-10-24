@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { EmailVerificationPurpose, User } from '@prisma/client';
 import bcrypt from 'bcrypt';
@@ -6,6 +6,7 @@ import { EmailVerificationService } from '../email-verification/email-verificati
 import { UsersService } from '../users/users.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { LoginDto } from './dto/login.dto.js';
+import { ResetPasswordDto } from './dto/reset-password.dto.js';
 
 type JwtPayload = {
   sub: string;
@@ -66,6 +67,25 @@ export class AuthService {
     return {
       accessToken: this.jwtService.sign(this.buildPayload(user)),
       user: this.buildPublicUser(user),
+    };
+  }
+
+  async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
+    await this.emailVerificationService.validateVerificationTicket(
+      dto.verificationTicket,
+      dto.email,
+      EmailVerificationPurpose.PASSWORD_RESET,
+    );
+
+    const user = await this.usersService.findByEmail(dto.email);
+    if (!user) {
+      throw new BadRequestException('Usuário não encontrado');
+    }
+
+    await this.usersService.updatePassword(user.id, dto.password);
+
+    return {
+      message: 'Senha redefinida com sucesso',
     };
   }
 

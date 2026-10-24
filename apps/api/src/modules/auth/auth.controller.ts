@@ -6,6 +6,7 @@ import { CreateUserDto } from './dto/create-user.dto.js';
 import { AuthService, type PublicUser } from './auth.service.js';
 import { CurrentUser } from './decorators/current-user.decorator.js';
 import { LoginDto } from './dto/login.dto.js';
+import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
 import { AUTH_COOKIE_NAME } from './jwt.strategy.js';
 
@@ -55,6 +56,15 @@ export class AuthController {
     const result = await this.authService.register(createUserDto);
     response.cookie(AUTH_COOKIE_NAME, result.accessToken, this.getCookieOptions());
     return { message: 'Cadastro realizado com sucesso', user: result.user };
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Redefine a senha do usuário utilizando o ticket de validação' })
+  @ApiResponse({ status: 200, description: 'Senha redefinida com sucesso' })
+  @ApiResponse({ status: 400, description: 'Ticket ou dados inválidos' })
+  async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+    return this.authService.resetPassword(resetPasswordDto);
   }
 
   @Get('me')
