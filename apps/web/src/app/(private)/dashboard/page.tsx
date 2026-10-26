@@ -10,6 +10,7 @@ import {
   PlusCircle,
   PiggyBank,
   ArrowUpRight,
+  Tag,
 } from "lucide-react";
 import { Button } from "@repo/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@repo/ui/card";
@@ -147,6 +148,13 @@ export default function DashboardPage() {
             >
               <Wallet className="h-4 w-4 text-sky-600" />
               <span>Gerenciar Contas</span>
+            </Link>
+            <Link
+              href="/categories"
+              className="inline-flex items-center w-full justify-start gap-2 rounded-lg border border-border bg-background hover:bg-muted hover:text-foreground text-sm font-medium h-10 px-3 cursor-pointer transition-colors"
+            >
+              <Tag className="h-4 w-4 text-emerald-600" />
+              <span>Gerenciar Categorias</span>
             </Link>
             <Button variant="outline" className="w-full justify-start gap-2 cursor-pointer">
               <TrendingUp className="h-4 w-4 text-violet-600" />
