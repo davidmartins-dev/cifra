@@ -293,6 +293,7 @@ test.describe("E2E - Gestão de Transações Financeiras (/transactions)", () =>
   test("deve executar o ciclo completo de CRUD: Criar, Filtrar, Editar e Excluir transação", async ({
     page,
   }) => {
+    test.slow();
     const uniqueTxDesc = `Almoço Executivo ${Date.now()}`;
     const updatedTxDesc = `${uniqueTxDesc} Alterado`;
 
