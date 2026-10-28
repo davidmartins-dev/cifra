@@ -10,6 +10,7 @@ import {
   PlusCircle,
   PiggyBank,
   ArrowUpRight,
+  ArrowLeftRight,
   Tag,
 } from "lucide-react";
 import { Button } from "@repo/ui/button";
@@ -138,10 +139,13 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button variant="outline" className="w-full justify-start gap-2 cursor-pointer">
-              <PlusCircle className="h-4 w-4 text-emerald-600" />
-              <span>Nova Transação</span>
-            </Button>
+            <Link
+              href="/transactions"
+              className="inline-flex items-center w-full justify-start gap-2 rounded-lg border border-border bg-background hover:bg-muted hover:text-foreground text-sm font-medium h-10 px-3 cursor-pointer transition-colors"
+            >
+              <ArrowLeftRight className="h-4 w-4 text-emerald-600" />
+              <span>Gerenciar Transações</span>
+            </Link>
             <Link
               href="/accounts"
               className="inline-flex items-center w-full justify-start gap-2 rounded-lg border border-border bg-background hover:bg-muted hover:text-foreground text-sm font-medium h-10 px-3 cursor-pointer transition-colors"
@@ -186,10 +190,13 @@ export default function DashboardPage() {
                   Comece adicionando sua primeira receita ou despesa.
                 </p>
               </div>
-              <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer">
+              <Link
+                href="/transactions"
+                className="inline-flex items-center gap-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium h-9 px-3 cursor-pointer transition-colors"
+              >
                 <PlusCircle className="h-4 w-4" />
-                Registrar movimentação
-              </Button>
+                <span>Registrar movimentação</span>
+              </Link>
             </div>
           </CardContent>
         </Card>
