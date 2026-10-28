@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 
 const isHttps = process.env.NEXT_PUBLIC_APP_URL?.startsWith('https://');
+const isE2E = process.env.PLAYWRIGHT_TEST === 'true';
+const shouldUpgradeInsecure = isHttps && !isE2E;
 
 const cspDirectives = [
   "default-src 'self'",
@@ -13,7 +15,7 @@ const cspDirectives = [
   "form-action 'self'",
   "frame-ancestors 'none'",
   "block-all-mixed-content",
-  ...(isHttps ? ['upgrade-insecure-requests'] : []),
+  ...(shouldUpgradeInsecure ? ['upgrade-insecure-requests'] : []),
 ].join('; ');
 
 const securityHeaders = [
@@ -21,7 +23,7 @@ const securityHeaders = [
     key: 'Content-Security-Policy',
     value: cspDirectives,
   },
-  ...(isHttps
+  ...(shouldUpgradeInsecure
     ? [
         {
           key: 'Strict-Transport-Security',
