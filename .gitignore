@@ -18,6 +18,8 @@ test-results/
 playwright-report/
 blob-report/
 playwright/.cache/
+zap-report.html
+zap.yaml
 
 # Turbo
 .turbo
