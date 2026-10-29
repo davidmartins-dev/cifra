@@ -12,21 +12,32 @@ import {
   ArrowUpRight,
   ArrowLeftRight,
   Tag,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@repo/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@repo/ui/card";
 import { useAuth } from "@/modules/auth";
+import { useFinancialOverview } from "@/modules/financial-summary";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, logout, isLoading } = useAuth();
+  const { user, logout, isLoading: isAuthLoading } = useAuth();
+  const { data: overview, isLoading: isOverviewLoading } = useFinancialOverview();
 
   const handleLogout = async () => {
     await logout();
     router.push("/login");
   };
 
+  const formatCurrency = (value: number | undefined): string => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value ?? 0);
+  };
+
   const displayName = user?.name || user?.email?.split("@")[0] || "Usuário";
+  const totalMovements = (overview?.incomeCount ?? 0) + (overview?.expenseCount ?? 0);
 
   return (
     <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6">
@@ -45,7 +56,7 @@ export default function DashboardPage() {
             variant="outline"
             size="sm"
             onClick={handleLogout}
-            disabled={isLoading}
+            disabled={isAuthLoading}
             className="cursor-pointer"
           >
             <LogOut className="h-4 w-4" />
@@ -65,7 +76,9 @@ export default function DashboardPage() {
             <Wallet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">R$ 0,00</div>
+            <div className="text-2xl font-bold" data-testid="dashboard-current-balance">
+              {isOverviewLoading ? "Carregando..." : formatCurrency(overview?.currentBalance)}
+            </div>
             <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
               <span className="text-emerald-600 dark:text-emerald-400 font-medium inline-flex items-center">
                 +0% <ArrowUpRight className="h-3 w-3" />
@@ -84,11 +97,14 @@ export default function DashboardPage() {
             <TrendingUp className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-              R$ 0,00
+            <div
+              className="text-2xl font-bold text-emerald-600 dark:text-emerald-400"
+              data-testid="dashboard-total-income"
+            >
+              {isOverviewLoading ? "Carregando..." : formatCurrency(overview?.totalIncome)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Entradas registradas
+              {overview?.incomeCount ?? 0} entrada(s) registrada(s)
             </p>
           </CardContent>
         </Card>
@@ -102,27 +118,32 @@ export default function DashboardPage() {
             <TrendingDown className="h-4 w-4 text-rose-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-rose-600 dark:text-rose-400">
-              R$ 0,00
+            <div
+              className="text-2xl font-bold text-rose-600 dark:text-rose-400"
+              data-testid="dashboard-total-expense"
+            >
+              {isOverviewLoading ? "Carregando..." : formatCurrency(overview?.totalExpense)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Saídas e pagamentos
+              {overview?.expenseCount ?? 0} saída(s) registrada(s)
             </p>
           </CardContent>
         </Card>
 
-        {/* Card 4: Economia / Meta */}
+        {/* Card 4: Economia / Saldo Líquido */}
         <Card className="border-border/60 shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Economia Estimada
+              Saldo Líquido
             </CardTitle>
             <PiggyBank className="h-4 w-4 text-sky-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">R$ 0,00</div>
+            <div className="text-2xl font-bold" data-testid="dashboard-net-balance">
+              {isOverviewLoading ? "Carregando..." : formatCurrency(overview?.netBalance)}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Meta financeira ativa
+              Resultado operacional do mês
             </p>
           </CardContent>
         </Card>
@@ -178,26 +199,49 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground space-y-3">
-              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-                <Wallet className="h-5 w-5 text-muted-foreground" />
+            {totalMovements > 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center space-y-3">
+                <div className="h-10 w-10 rounded-full bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {totalMovements} movimentação(ões) ativa(s) registrada(s)
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Seus dados estão consolidados e sincronizados em tempo real.
+                  </p>
+                </div>
+                <Link
+                  href="/transactions"
+                  className="inline-flex items-center gap-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium h-9 px-3 cursor-pointer transition-colors"
+                >
+                  <PlusCircle className="h-4 w-4" />
+                  <span>Ver Extrato Completo</span>
+                </Link>
               </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">
-                  Nenhuma transação registrada ainda
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Comece adicionando sua primeira receita ou despesa.
-                </p>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground space-y-3">
+                <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                  <Wallet className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    Nenhuma transação registrada ainda
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Comece adicionando sua primeira receita ou despesa.
+                  </p>
+                </div>
+                <Link
+                  href="/transactions"
+                  className="inline-flex items-center gap-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium h-9 px-3 cursor-pointer transition-colors"
+                >
+                  <PlusCircle className="h-4 w-4" />
+                  <span>Registrar movimentação</span>
+                </Link>
               </div>
-              <Link
-                href="/transactions"
-                className="inline-flex items-center gap-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium h-9 px-3 cursor-pointer transition-colors"
-              >
-                <PlusCircle className="h-4 w-4" />
-                <span>Registrar movimentação</span>
-              </Link>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>

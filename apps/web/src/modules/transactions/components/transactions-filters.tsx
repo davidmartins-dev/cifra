@@ -153,6 +153,7 @@ export function TransactionsFilters({
           >
             <SelectTrigger
               data-testid="filter-category-select"
+              aria-label="Filtrar por categoria"
               className="h-8 text-xs w-full"
             >
               <SelectValue placeholder="Todas as categorias" />
@@ -184,6 +185,7 @@ export function TransactionsFilters({
           >
             <SelectTrigger
               data-testid="filter-account-select"
+              aria-label="Filtrar por conta"
               className="h-8 text-xs w-full"
             >
               <SelectValue placeholder="Todas as contas" />
