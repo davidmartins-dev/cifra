@@ -17,7 +17,7 @@ async function bootstrap() {
     credentials: true,
   });
   app.setGlobalPrefix('api/v1', {
-    exclude: ['metrics', 'health'],
+    exclude: ['metrics', 'health', 'api/v1/health'],
   });
 
   app.useGlobalPipes(

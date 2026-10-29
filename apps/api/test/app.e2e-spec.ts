@@ -25,6 +25,15 @@ describe('Health & Observability (e2e)', () => {
     expect(response.body).toHaveProperty('version');
   });
 
+  it('/api/v1/health (GET)', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/v1/health')
+      .expect(200);
+
+    expect(response.body).toHaveProperty('status');
+    expect(response.body).toHaveProperty('version');
+  });
+
   it('/metrics (GET) deve expor métricas no formato do Prometheus', async () => {
     const response = await request(app.getHttpServer())
       .get('/metrics')
