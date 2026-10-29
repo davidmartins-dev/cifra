@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -17,12 +18,26 @@ import {
 import { Button } from "@repo/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@repo/ui/card";
 import { useAuth } from "@/modules/auth";
-import { useFinancialOverview } from "@/modules/financial-summary";
+import {
+  useFinancialOverview,
+  useCategorySummary,
+  useMonthlyEvolution,
+  CategorySummaryBreakdown,
+  MonthlyEvolutionChart,
+  type TransactionType,
+} from "@/modules/financial-summary";
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user, logout, isLoading: isAuthLoading } = useAuth();
   const { data: overview, isLoading: isOverviewLoading } = useFinancialOverview();
+  const [categoryType, setCategoryType] = React.useState<TransactionType>("EXPENSE");
+  const { data: categorySummary, isLoading: isCategoryLoading } = useCategorySummary({
+    type: categoryType,
+  });
+  const { data: monthlyEvolution, isLoading: isEvolutionLoading } = useMonthlyEvolution({
+    year: new Date().getFullYear(),
+  });
 
   const handleLogout = async () => {
     await logout();
@@ -244,6 +259,20 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* Seção Analítica: Distribuição por Categorias e Evolução Mensal */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+        <CategorySummaryBreakdown
+          summary={categorySummary}
+          isLoading={isCategoryLoading}
+          selectedType={categoryType}
+          onTypeChange={setCategoryType}
+        />
+        <MonthlyEvolutionChart
+          evolution={monthlyEvolution}
+          isLoading={isEvolutionLoading}
+        />
       </div>
     </main>
   );
