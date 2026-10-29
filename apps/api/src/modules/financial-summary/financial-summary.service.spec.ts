@@ -21,15 +21,17 @@ describe('FinancialSummaryService', () => {
         _count: { id: 5 },
       };
 
+      const aggregateMock = vi
+        .fn()
+        .mockResolvedValueOnce(mockIncomeAgg)
+        .mockResolvedValueOnce(mockExpenseAgg);
+
       const prisma = {
         account: {
           findMany: vi.fn().mockResolvedValue(mockAccounts),
         },
         transaction: {
-          aggregate: vi
-            .fn()
-            .mockResolvedValueOnce(mockIncomeAgg)
-            .mockResolvedValueOnce(mockExpenseAgg),
+          aggregate: aggregateMock,
         },
       } as unknown as PrismaService;
 
@@ -39,6 +41,16 @@ describe('FinancialSummaryService', () => {
       expect(prisma.account.findMany).toHaveBeenCalledWith({
         where: { userId },
         select: { balance: true },
+      });
+      expect(aggregateMock).toHaveBeenNthCalledWith(1, {
+        where: { userId, type: TransactionType.INCOME },
+        _sum: { amount: true },
+        _count: { id: true },
+      });
+      expect(aggregateMock).toHaveBeenNthCalledWith(2, {
+        where: { userId, type: TransactionType.EXPENSE },
+        _sum: { amount: true },
+        _count: { id: true },
       });
       expect(result).toEqual({
         currentBalance: 2000,
@@ -50,8 +62,12 @@ describe('FinancialSummaryService', () => {
       });
     });
 
-    it('deve aplicar filtros de período e conta ao buscar o resumo geral', async () => {
+    it('deve aplicar filtros de período completo e conta ao buscar o resumo geral', async () => {
       const mockAccount = { id: 'acc-1', userId };
+      const aggregateMock = vi.fn().mockResolvedValue({
+        _sum: { amount: null },
+        _count: { id: 0 },
+      });
 
       const prisma = {
         account: {
@@ -59,10 +75,7 @@ describe('FinancialSummaryService', () => {
           findMany: vi.fn().mockResolvedValue([{ balance: 800 }]),
         },
         transaction: {
-          aggregate: vi.fn().mockResolvedValue({
-            _sum: { amount: null },
-            _count: { id: 0 },
-          }),
+          aggregate: aggregateMock,
         },
       } as unknown as PrismaService;
 
@@ -82,6 +95,19 @@ describe('FinancialSummaryService', () => {
         where: { userId, id: 'acc-1' },
         select: { balance: true },
       });
+      expect(aggregateMock).toHaveBeenCalledWith({
+        where: {
+          userId,
+          accountId: 'acc-1',
+          type: TransactionType.INCOME,
+          date: {
+            gte: new Date('2026-10-01T00:00:00.000Z'),
+            lte: new Date('2026-10-31T23:59:59.999Z'),
+          },
+        },
+        _sum: { amount: true },
+        _count: { id: true },
+      });
       expect(result).toEqual({
         currentBalance: 800,
         totalIncome: 0,
@@ -90,6 +116,66 @@ describe('FinancialSummaryService', () => {
         incomeCount: 0,
         expenseCount: 0,
       });
+    });
+
+    it('deve aplicar apenas filtro de startDate quando endDate não for informado no resumo geral', async () => {
+      const aggregateMock = vi.fn().mockResolvedValue({
+        _sum: { amount: 150 },
+        _count: { id: 1 },
+      });
+
+      const prisma = {
+        account: {
+          findMany: vi.fn().mockResolvedValue([]),
+        },
+        transaction: {
+          aggregate: aggregateMock,
+        },
+      } as unknown as PrismaService;
+
+      const service = new FinancialSummaryService(prisma);
+      await service.getOverview(userId, { startDate: '2026-05-01T00:00:00.000Z' });
+
+      expect(aggregateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            userId,
+            date: {
+              gte: new Date('2026-05-01T00:00:00.000Z'),
+            },
+          }),
+        }),
+      );
+    });
+
+    it('deve aplicar apenas filtro de endDate quando startDate não for informado no resumo geral', async () => {
+      const aggregateMock = vi.fn().mockResolvedValue({
+        _sum: { amount: 200 },
+        _count: { id: 2 },
+      });
+
+      const prisma = {
+        account: {
+          findMany: vi.fn().mockResolvedValue([]),
+        },
+        transaction: {
+          aggregate: aggregateMock,
+        },
+      } as unknown as PrismaService;
+
+      const service = new FinancialSummaryService(prisma);
+      await service.getOverview(userId, { endDate: '2026-06-30T23:59:59.999Z' });
+
+      expect(aggregateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            userId,
+            date: {
+              lte: new Date('2026-06-30T23:59:59.999Z'),
+            },
+          }),
+        }),
+      );
     });
 
     it('deve lançar NotFoundException se a conta fornecida no filtro não pertencer ao usuário', async () => {
@@ -103,15 +189,16 @@ describe('FinancialSummaryService', () => {
 
       await expect(
         service.getOverview(userId, { accountId: 'acc-alheia' }),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow('Conta financeira não encontrada');
     });
   });
 
   describe('getByCategory', () => {
-    it('deve retornar agrupamento por categoria com valores e percentuais calculados', async () => {
+    it('deve retornar agrupamento por categoria com valores e percentuais calculados e tratar categoria desconhecida', async () => {
       const mockGrouped = [
         { categoryId: 'cat-1', _sum: { amount: 300 }, _count: { id: 3 } },
         { categoryId: 'cat-2', _sum: { amount: 100 }, _count: { id: 1 } },
+        { categoryId: 'cat-inexistente', _sum: { amount: 100 }, _count: { id: 1 } },
       ];
 
       const mockCategories = [
@@ -139,24 +226,130 @@ describe('FinancialSummaryService', () => {
       });
       expect(result).toEqual({
         type: TransactionType.EXPENSE,
-        totalAmount: 400,
+        totalAmount: 500,
         categories: [
           {
             categoryId: 'cat-1',
             categoryName: 'Alimentação',
             amount: 300,
-            percentage: 75,
+            percentage: 60,
             count: 3,
           },
           {
             categoryId: 'cat-2',
             categoryName: 'Transporte',
             amount: 100,
-            percentage: 25,
+            percentage: 20,
+            count: 1,
+          },
+          {
+            categoryId: 'cat-inexistente',
+            categoryName: 'Categoria desconhecida',
+            amount: 100,
+            percentage: 20,
             count: 1,
           },
         ],
       });
+    });
+
+    it('deve aplicar filtros de conta, tipo, startDate e endDate no getByCategory', async () => {
+      const mockAccount = { id: 'acc-1', userId };
+      const groupByMock = vi.fn().mockResolvedValue([]);
+
+      const prisma = {
+        account: {
+          findFirst: vi.fn().mockResolvedValue(mockAccount),
+        },
+        transaction: {
+          groupBy: groupByMock,
+        },
+        category: {
+          findMany: vi.fn(),
+        },
+      } as unknown as PrismaService;
+
+      const service = new FinancialSummaryService(prisma);
+      const query = {
+        accountId: 'acc-1',
+        type: TransactionType.INCOME,
+        startDate: '2026-01-01T00:00:00.000Z',
+        endDate: '2026-01-31T23:59:59.999Z',
+      };
+
+      await service.getByCategory(userId, query);
+
+      expect(prisma.account.findFirst).toHaveBeenCalledWith({
+        where: { id: 'acc-1', userId },
+      });
+      expect(groupByMock).toHaveBeenCalledWith({
+        by: ['categoryId'],
+        where: {
+          userId,
+          type: TransactionType.INCOME,
+          accountId: 'acc-1',
+          date: {
+            gte: new Date('2026-01-01T00:00:00.000Z'),
+            lte: new Date('2026-01-31T23:59:59.999Z'),
+          },
+        },
+        _sum: { amount: true },
+        _count: { id: true },
+      });
+    });
+
+    it('deve aplicar filtro de apenas startDate no getByCategory', async () => {
+      const groupByMock = vi.fn().mockResolvedValue([]);
+
+      const prisma = {
+        transaction: {
+          groupBy: groupByMock,
+        },
+        category: {
+          findMany: vi.fn(),
+        },
+      } as unknown as PrismaService;
+
+      const service = new FinancialSummaryService(prisma);
+      await service.getByCategory(userId, { startDate: '2026-02-01T00:00:00.000Z' });
+
+      expect(groupByMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            userId,
+            date: {
+              gte: new Date('2026-02-01T00:00:00.000Z'),
+            },
+          }),
+        }),
+      );
+    });
+
+    it('deve aplicar filtro de apenas endDate no getByCategory', async () => {
+      const groupByMock = vi.fn().mockResolvedValue([]);
+
+      const prisma = {
+        transaction: {
+          groupBy: groupByMock,
+        },
+        category: {
+          findMany: vi.fn(),
+        },
+      } as unknown as PrismaService;
+
+      const service = new FinancialSummaryService(prisma);
+      await service.getByCategory(userId, { endDate: '2026-03-31T23:59:59.999Z' });
+
+      expect(groupByMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            userId,
+            date: {
+              lte: new Date('2026-03-31T23:59:59.999Z'),
+            },
+          }),
+        }),
+      );
     });
 
     it('deve retornar percentual zero e array vazio quando não houver transações', async () => {
@@ -191,7 +384,7 @@ describe('FinancialSummaryService', () => {
 
       await expect(
         service.getByCategory(userId, { accountId: 'acc-invalida' }),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow('Conta financeira não encontrada');
     });
   });
 
@@ -223,6 +416,21 @@ describe('FinancialSummaryService', () => {
 
       const service = new FinancialSummaryService(prisma);
       const result = await service.getMonthlyEvolution(userId, { year: 2026 });
+
+      expect(prisma.transaction.findMany).toHaveBeenCalledWith({
+        where: {
+          userId,
+          date: {
+            gte: new Date(Date.UTC(2026, 0, 1, 0, 0, 0, 0)),
+            lte: new Date(Date.UTC(2026, 11, 31, 23, 59, 59, 999)),
+          },
+        },
+        select: {
+          amount: true,
+          type: true,
+          date: true,
+        },
+      });
 
       expect(result.year).toBe(2026);
       expect(result.totalIncome).toBe(3500);
@@ -269,6 +477,21 @@ describe('FinancialSummaryService', () => {
 
       const service = new FinancialSummaryService(prisma);
       const result = await service.getMonthlyEvolution(userId);
+
+      expect(prisma.transaction.findMany).toHaveBeenCalledWith({
+        where: {
+          userId,
+          date: {
+            gte: new Date(Date.UTC(currentYear, 0, 1, 0, 0, 0, 0)),
+            lte: new Date(Date.UTC(currentYear, 11, 31, 23, 59, 59, 999)),
+          },
+        },
+        select: {
+          amount: true,
+          type: true,
+          date: true,
+        },
+      });
 
       expect(result.year).toBe(currentYear);
       expect(result.totalIncome).toBe(0);

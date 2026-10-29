@@ -5,6 +5,7 @@ on:
     branches: ["main"]
   pull_request:
     branches: ["main"]
+  workflow_dispatch:
 
 jobs:
   validation:
@@ -42,7 +43,7 @@ jobs:
         run: pnpm test
 
   e2e-api:
-    name: E2E Tests - Back-end (API)
+    name: E2E Tests - Back-end (API com Testcontainers)
     runs-on: ubuntu-latest
     needs: [validation]
 
@@ -64,18 +65,86 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run Back-end E2E Tests
+      - name: Run Back-end E2E & Concurrency Tests (Testcontainers)
         env:
           NODE_ENV: test
           JWT_SECRET: super-secret-e2e-jwt-key-with-minimum-32-characters
           JWT_EXPIRES_IN: 15m
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cifra_test?schema=public
         run: pnpm --filter ./apps/api run test:e2e
+
+  load-tests:
+    name: Load Tests (Grafana k6)
+    runs-on: ubuntu-latest
+    needs: [validation, e2e-api]
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: cifra_user
+          POSTGRES_PASSWORD: cifra_dev_password
+          POSTGRES_DB: cifra_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Prisma Migrations
+        env:
+          DATABASE_URL: postgresql://cifra_user:cifra_dev_password@localhost:5432/cifra_db?schema=public
+        run: pnpm --filter ./apps/api exec prisma migrate deploy
+
+      - name: Start API in Background for Load Testing
+        env:
+          NODE_ENV: test
+          PORT: 3000
+          DATABASE_URL: postgresql://cifra_user:cifra_dev_password@localhost:5432/cifra_db?schema=public
+          JWT_SECRET: super-secret-e2e-jwt-key-with-minimum-32-characters
+          JWT_EXPIRES_IN: 15m
+        run: |
+          pnpm --filter ./apps/api run build
+          (cd apps/api && node dist/main.js) &
+
+      - name: Wait for API to be ready
+        run: |
+          for i in {1..30}; do
+            if curl -s http://localhost:3000/api/v1/health | grep -q '"status":"ok"'; then
+              echo "API is ready and healthy!"
+              break
+            fi
+            echo "Waiting for API to be ready..."
+            sleep 1
+          done
+
+      - name: Run Grafana k6 Load Test
+        run: |
+          docker run --rm --net=host -v ${{ github.workspace }}/tests/load:/tests grafana/k6 run /tests/k6-load-test.js
 
   e2e-web:
     name: E2E Tests - Front-end (Playwright)
     runs-on: ubuntu-latest
-    needs: [validation]
+    needs: [validation, e2e-api]
 
     steps:
       - name: Checkout Repository
@@ -111,4 +180,106 @@ jobs:
           name: playwright-report
           path: apps/web/playwright-report/
           retention-days: 14
-        
+
+  security-scan:
+    name: Security Scan (OWASP ZAP)
+    runs-on: ubuntu-latest
+    needs: [validation, e2e-api]
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: cifra_user
+          POSTGRES_PASSWORD: cifra_dev_password
+          POSTGRES_DB: cifra_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Prisma Migrations
+        env:
+          DATABASE_URL: postgresql://cifra_user:cifra_dev_password@localhost:5432/cifra_db?schema=public
+        run: pnpm --filter ./apps/api exec prisma migrate deploy
+
+      - name: Start API in Background for Security Scan
+        env:
+          NODE_ENV: test
+          PORT: 3000
+          DATABASE_URL: postgresql://cifra_user:cifra_dev_password@localhost:5432/cifra_db?schema=public
+          JWT_SECRET: super-secret-e2e-jwt-key-with-minimum-32-characters
+          JWT_EXPIRES_IN: 15m
+        run: |
+          pnpm --filter ./apps/api run build
+          (cd apps/api && node dist/main.js) &
+
+      - name: Wait for API to be ready
+        run: |
+          for i in {1..30}; do
+            if curl -s http://localhost:3000/api/v1/health | grep -q '"status":"ok"'; then
+              echo "API is ready and healthy!"
+              break
+            fi
+            echo "Waiting for API to be ready..."
+            sleep 1
+          done
+
+      - name: Run OWASP ZAP Baseline Scan
+        run: |
+          docker run --rm --net=host -v ${{ github.workspace }}:/zap/wrk/:rw zaproxy/zap-stable zap-baseline.py -t http://localhost:3000/api/v1/health -r zap-report.html -I
+
+  mutation-tests:
+    name: Mutation Tests - Financial Calculations (Stryker)
+    runs-on: ubuntu-latest
+    needs: [validation, e2e-api]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Stryker Mutation Testing
+        run: pnpm --filter ./apps/api run test:mutation
+
+      - name: Upload Mutation Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report
+          path: apps/api/reports/mutation/
+          retention-days: 14

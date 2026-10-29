@@ -4,6 +4,9 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module.js';
+import { initTelemetry, shutdownTelemetry } from './shared/observability/tracing.js';
+
+initTelemetry();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -13,7 +16,9 @@ async function bootstrap() {
     origin: process.env.CORS_ORIGIN || 'http://localhost:3001',
     credentials: true,
   });
-  app.setGlobalPrefix('api/v1');
+  app.setGlobalPrefix('api/v1', {
+    exclude: ['metrics', 'health', 'api/v1/health'],
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -36,5 +41,17 @@ async function bootstrap() {
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
 }
+
+process.on('SIGTERM', () => {
+  void shutdownTelemetry().finally(() => {
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  void shutdownTelemetry().finally(() => {
+    process.exit(0);
+  });
+});
 
 void bootstrap();

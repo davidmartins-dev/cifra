@@ -7,6 +7,9 @@ export default defineConfig({
     globals: true,
     root: './',
     include: ['**/*.e2e-spec.ts'],
+    fileParallelism: false,
+    testTimeout: 60000,
+    hookTimeout: 60000,
     env: {
       NODE_ENV: 'test',
       JWT_SECRET: 'super-secret-e2e-jwt-key-with-minimum-32-characters',

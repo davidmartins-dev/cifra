@@ -6,10 +6,13 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "test": "turbo run test",
+    "test:load": "docker run --rm -i --net=host -v $(pwd)/tests/load:/tests grafana/k6 run /tests/k6-load-test.js",
+    "test:security": "docker run --rm -t --net=host -v $(pwd):/zap/wrk/:rw zaproxy/zap-stable zap-baseline.py -t http://localhost:3000/api/v1/health -r /zap/wrk/zap-report.html -I",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@next/eslint-plugin-next": "16.3.4",
     "@tailwindcss/postcss": "^4.3.3",
     "@typescript-eslint/eslint-plugin": "^8.71.0",
