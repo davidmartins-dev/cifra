@@ -20,6 +20,8 @@ blob-report/
 playwright/.cache/
 zap-report.html
 zap.yaml
+reports/
+.stryker-tmp/
 
 # Turbo
 .turbo

@@ -3,7 +3,7 @@
   "packageManager": "pnpm",
   "testRunner": "vitest",
   "plugins": ["@stryker-mutator/vitest-runner"],
-  "reporters": ["clear-text", "progress"],
+  "reporters": ["clear-text", "progress", "html"],
   "coverageAnalysis": "perTest",
   "mutate": [
     "src/modules/financial-summary/financial-summary.service.ts"
